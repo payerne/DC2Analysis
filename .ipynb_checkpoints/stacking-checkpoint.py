@@ -114,7 +114,7 @@ class Stacking():
         self.is_deltasigma = None
         
         
-    def Type(self, is_deltasigma = True):
+    def SelectType(self, is_deltasigma = True):
         
         """Indicates the type of profile to bin"""
         
@@ -141,7 +141,9 @@ class Stacking():
         
         self.variance_gt_list.append(np.nan_to_num(profile_stack['gt_err']**2, nan = np.nan, posinf = np.nan, neginf = np.nan))
         self.radial_axis_list.append(profile_stack['radius'])
+        
         self.n_stacked_gt += 1
+        
         
     def MakeShearProfile(self, method):
         
@@ -181,51 +183,6 @@ class Stacking():
         
         self.average_z = np.mean(self.z_cluster_list)
         self.profile = profile
-
-        r"""
-    def FitHaloMass(self, Sigmoid = True):
-        
-        #Fit the Halo Mass and extra parameters (if Sigmoid == True)
-        
-        if self.is_deltasigma == True:
-            def prediction_type(r,logm):
-                return model.predict_excess_surface_density(r, logm, self.average_z ,self.z_galaxy_list, self.cosmo)
-        else:
-            def prediction_type(r,logm):
-                return model.predict_reduced_tangential_shear_z_distrib(r , logm, self.average_z, self.z_galaxy_list, self.cosmo)
-            
-        if Sigmoid == True:
-            
-            def prediction_modified(r,logm,r_0,r_c):
-                return prediction_type(r,logm)*Sigmoid(r, r_0, r_c)
-            
-            
-            param_p0 = [14. ,0.2, 0.1]
-            param_bounds = ([13. , 0. , 0.  ], [16. , 3. ,3. ])
-            
-            r = self.profile['radius']
-            gt = self.profile['gt']
-            gt_err = self.profile['gt_err']
-            
-        else:
-                
-            def prediction_modified(r,logm):
-                return prediction_type(r,logm)
-            
-            param_p0 = [14.]
-            param_bounds = ([13. ], [16.])
-            
-            r_lim = model.d(self.average_z)
-            
-            gt = self.profile['gt'][self.profile['radius'] > r_lim]
-            gt_err = self.profile['gt_err'][self.profile['radius'] > r_lim]
-            r = self.profile['radius'][self.profile['radius'] > r_lim]
-        
-            popt, pcov = fit(prediction_modified, r, gt, gt_err, param_p0, param_bounds)
-            
-            return popt, pcov
-        
-           """ 
             
             
         
