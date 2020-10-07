@@ -31,8 +31,31 @@ def d(z):
 
 
 def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, cosmo):
-    #returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
-    #for a collection of galaxies at several redshift data['z_gal'] following Chang averaging
+    r"""returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
+    for a collection of background galaxy redshift
+    
+    Parameters
+    ----------
+    r : array_like, float
+        Rrojected radius form the cluster center in Mpc
+    logm : float
+        The quantity log10(M200m) where M200m is the 200m-mass of the galaxy cluster in M_\odot
+    cluster_z : float
+        Redshift of the galaxy cluster
+    z_gal : list
+        The list of background galaxy redshifts
+    cosmo : astropy Table
+    
+    Returns
+    -------
+    gt_model : array_like, float
+        The predicted reduced tangential shear (no units)
+        
+    
+        
+    
+    """
+    
     
     m = 10**logm
     Ngals = int(len(z_gal))
