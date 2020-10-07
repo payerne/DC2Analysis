@@ -71,8 +71,7 @@ def shapenoise(cl_stack):
     return cl_stack
 
 def make_gt_profile(cl_stack, up, down, n_bins, is_deltasigma, cosmo):
-    
-    #cl_stack are individual galaxy catalogs
+
     
     if (cl_stack != 1):
         
@@ -176,6 +175,12 @@ class Stacking():
     def MakeShearProfile(self, method):
         
         """Calculates the stacked profile from individual profiles"""
+        
+        if self.n_stacked_gt == 0:
+            
+            raise ValueError(f"Problem for makin{self.n_stacked_gt} loaded galaxy catalogs")
+        elif self.n_stacked_gt == 1:
+            raise ValueError(f"No loaded galaxy catalogs")
     
         gt = np.array(self.gt_list)
         variance_gt = np.array(self.variance_gt_list) 
