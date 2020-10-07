@@ -91,8 +91,6 @@ class Stacking():
     n_bins : int type
         number of bins to make binned profile
     
-    
-    
     """
     
     def __init__(self, r_low, r_up, n_bins, cosmo):
@@ -149,11 +147,9 @@ class Stacking():
         
         """Calculates the stacked profile from individual profiles"""
         
-        if self.n_stacked_gt == 0:
+        if self.n_stacked_gt in [0,1]:
             
-            raise ValueError(f"Problem for makin{self.n_stacked_gt} loaded galaxy catalogs")
-        elif self.n_stacked_gt == 1:
-            raise ValueError(f"No loaded galaxy catalogs")
+            raise ValueError(f"Problem for making stack stategy : {self.n_stacked_gt} loaded galaxy catalog(s)")
     
         gt = np.array(self.gt_list)
         variance_gt = np.array(self.variance_gt_list) 
