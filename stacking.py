@@ -119,7 +119,7 @@ class Stacking():
         self.is_deltasigma = is_deltasigma
         
     
-    def Add(self, cl_stack, Shapenoise = True):
+    def AddCatalog(self, cl_stack, Shapenoise = True):
         
         """add individual binned profile from individual galaxy catalog"""
         
