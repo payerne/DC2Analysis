@@ -71,7 +71,7 @@ def shapenoise(cl_stack):
     return cl_stack
 
 def make_gt_profile(cl_stack, up, down, n_bins, is_deltasigma, cosmo):
-
+    #leg
     
     if (cl_stack != 1):
         
