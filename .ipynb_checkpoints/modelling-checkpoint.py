@@ -17,14 +17,12 @@ def concentration(m, z_cl):
     
     return a * ( m/m0 )**b *( 1 + z_cl )**c
 
-
 def Sigmoid(r, r_0, r_c):
     
     r"""modelling of a sigmoid"""
     
     A = 1.    
     return A/(1 + np.exp(-(r - r_0)/r_c))
-
 
 def d(z):
     
@@ -120,7 +118,7 @@ def predict_excess_surface_density(r, logm, cluster_z, z_gal, cosmo):
         order_0 = clmm.predict_excess_surface_density(R*cosmo.h, m*cosmo.h, c, cluster_z, cosmo, delta_mdef=200,
                                    halo_profile_model='nfw')
         
-        order_1 = order_0*surface_density_nfw*meancritSD_3/meancritSD_1
+        order_1 = order_0 * surface_density_nfw * (meancritSD_3/meancritSD_1)
         
         deltasigma.append(order_0 + order_1)
         
