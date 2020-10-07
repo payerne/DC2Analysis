@@ -7,8 +7,6 @@ except:
     import clmm
 import numpy as np
 from astropy.table import Table
-from scipy.optimize import curve_fit
-import scipy
 
 def concentration(m, z_cl):
     
@@ -18,7 +16,7 @@ def concentration(m, z_cl):
     a , b, c = 10.14, - 0.081,  - 1.01
     m0 = 2 * 10**(12)
     
-    return a * (m/m0)**b *( 1 + z_cl)**c
+    return a * ( m/m0 )**b *( 1 + z_cl )**c
 
 
 def Sigmoid(r, r_0, r_c):
