@@ -24,35 +24,6 @@ import clmm.polaraveraging as pa
 import clmm.utils as utils
 
 import modelling as model
-
-def fit(model,x,y,y_err, param_p0, param_bounds):
-    
-    r""" Computes parameters and their covariance matrix whose model functions depends on, using (x,y) couple of data
-    
-    Parameters
-    ----------
-    model : function
-        Function of the variable x with input parameters to fit
-    x : array_like
-        Variable of the function model
-    y : array_like
-        Same size as x, represents the measures of model for a given x[i] variable
-    param_p0: list_like
-        array of initial condition for parameters to fit
-    param_bounds : tuple_like
-        prior for the parameters to fit
-        
-    Returns
-    -------
-    popt : array_like
-        list of estimated parameters
-    pcov : matrix_like
-        covariance matrix for estimated parameters
-    """
-    
-    popt, pcov = curve_fit(model, x, y, sigma = y_err , bounds = param_bounds, p0 = param_p0)
-    
-    return popt, pcov
     
 
 def shapenoise(cl_stack):
@@ -211,9 +182,10 @@ class Stacking():
         self.average_z = np.mean(self.z_cluster_list)
         self.profile = profile
 
+        r"""
     def FitHaloMass(self, Sigmoid = True):
         
-        """Fit the Halo Mass and extra parameters (if Sigmoid == True)"""
+        #Fit the Halo Mass and extra parameters (if Sigmoid == True)
         
         if self.is_deltasigma == True:
             def prediction_type(r,logm):
@@ -253,7 +225,7 @@ class Stacking():
             
             return popt, pcov
         
-            
+           """ 
             
             
         
