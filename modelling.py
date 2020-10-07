@@ -5,18 +5,10 @@ except:
     import notebook_install
     notebook_install.install_clmm_pipeline(upgrade=False)
     import clmm
-from astropy.cosmology import FlatLambdaCDM
-import matplotlib.pyplot as plt
 import numpy as np
-from numpy import random
-from sampler import fitters
-from astropy.coordinates import SkyCoord
 from astropy.table import Table
 from scipy.optimize import curve_fit
-import cluster_toolkit as ct
 import scipy
-import itertools
-import clmm.polaraveraging as pa
 
 def concentration(m, z_cl):
     
