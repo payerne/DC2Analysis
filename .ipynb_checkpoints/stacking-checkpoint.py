@@ -249,12 +249,10 @@ class Stacking():
             gt_err = self.profile['gt_err'][self.profile['radius'] > r_lim]
             r = self.profile['radius'][self.profile['radius'] > r_lim]
         
-        try:
             popt, pcov = fit(prediction_modified, r, gt, gt_err, param_p0, param_bounds)
+            
             return popt, pcov
         
-        except ValueError:
-            print("Error - curve_fit failed")
             
             
             
