@@ -17,20 +17,6 @@ def concentration(m, z_cl):
     
     return a * ( m/m0 )**b *( 1 + z_cl )**c
 
-def Sigmoid(r, r_0, r_c):
-    
-    r"""modelling of a sigmoid"""
-    
-    A = 1.    
-    return A/(1 + np.exp(-(r - r_0)/r_c))
-
-def d(z):
-    
-    r"""modelling of the distance d of the attenuated region at redshift z"""
-    
-    return 0.96*z + 0.32
-
-
 def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, cosmo):
     
     r"""returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
