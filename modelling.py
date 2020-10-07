@@ -10,8 +10,7 @@ from astropy.table import Table
 
 def concentration(m, z_cl):
     
-    #return the concentration of a cluster of mass m at given redshift z_cl
-    #Duffy (207)
+    r"""return the concentration of a cluster of mass m at given redshift z_cl (Duffy (2007)"""
     
     a , b, c = 10.14, - 0.081,  - 1.01
     m0 = 2 * 10**(12)
@@ -20,17 +19,22 @@ def concentration(m, z_cl):
 
 
 def Sigmoid(r, r_0, r_c):
-    #modelling of the sigmoid
+    
+    r"""modelling of a sigmoid"""
+    
     A = 1.    
     return A/(1 + np.exp(-(r - r_0)/r_c))
 
 
 def d(z):
-    #modelling of the distance d of the attenuated region at redshift z
+    
+    r"""modelling of the distance d of the attenuated region at redshift z"""
+    
     return 0.96*z + 0.32
 
 
 def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, cosmo):
+    
     r"""returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
     for a collection of background galaxy redshift
     
@@ -50,10 +54,6 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, cosmo
     -------
     gt_model : array_like, float
         The predicted reduced tangential shear (no units)
-        
-    
-        
-    
     """
     
     
@@ -82,7 +82,26 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, cosmo
 
 
 def predict_excess_surface_density(r, logm, cluster_z, z_gal, cosmo):
-    #doesnot depend of galaxy redshifts
+    
+    r"""returns the predict excess surface density
+    
+    Parameters
+    ----------
+    r : array_like, float
+        Rrojected radius form the cluster center in Mpc
+    logm : float
+        The quantity log10(M200m) where M200m is the 200m-mass of the galaxy cluster in M_\odot
+    cluster_z : float
+        Redshift of the galaxy cluster
+    z_gal : list
+        The list of background galaxy redshifts
+    cosmo : astropy Table
+    
+    Returns
+    -------
+    deltasigma : array_like, float
+        The predicted excess surface density zero-order and second-order
+    """
     m = 10**logm
     
     c = concentration(m,cluster_z)
