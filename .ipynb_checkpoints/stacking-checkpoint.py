@@ -246,11 +246,11 @@ class Stacking():
         
         try:
             popt, pcov = fit(prediction_modified, r, gt, gt_err, param_p0, param_bounds)
-            
+            return popt, pcov
+        
         except ValueError:
             print("Error - curve_fit failed")
             
-        return popt, pcov
             
             
         
