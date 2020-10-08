@@ -10,7 +10,7 @@ from astropy.table import Table
 
 def Duffy_concentration(m, z_cl):
     
-    r"""return the concentration of a cluster of mass m at given redshift z_cl (Duffy (2007)"""
+    r"""return the concentration of a cluster of mass m at given redshift (.Duffy (2007))"""
     
     a , b, c = 10.14, - 0.081,  - 1.01
     m0 = 2 * 10**(12)
