@@ -8,7 +8,7 @@ except:
 import numpy as np
 from astropy.table import Table
 
-def concentration(m, z_cl):
+def Duffy_concentration(m, z_cl):
     
     r"""return the concentration of a cluster of mass m at given redshift z_cl (Duffy (2007)"""
     
