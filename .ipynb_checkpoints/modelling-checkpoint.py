@@ -54,7 +54,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, cosmo
     z = bin_center
     gt_model = []
     
-    c = concentration(m,cluster_z)
+    c = Duffy_concentration(m,cluster_z)
     for i,R in enumerate(r):
         shear = hist*clmm.predict_reduced_tangential_shear(R*cosmo.h,
                                                                      m*cosmo.h, c,
@@ -88,7 +88,7 @@ def predict_excess_surface_density(r, logm, cluster_z, z_gal, cosmo, order = 0):
     """
     m = 10**logm
     
-    c = concentration(m,cluster_z)
+    c = Duffy_concentration(m,cluster_z)
     
     if order == 1:
         
