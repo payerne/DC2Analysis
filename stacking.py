@@ -17,7 +17,6 @@ import clmm.utils as utils
 
 import modelling as model
     
-
 def shapenoise(cl_stack):
     
     es1 = cl_stack.galcat['e1_true']
@@ -115,7 +114,7 @@ class Stacking():
         
     def _add_background_galaxy_z(self, gc):
         
-        self.z_galaxy_list.append(gc.galcat['z'])
+        self.z_galaxy_list.extend(gc.galcat['z'])
         
     def AddProfile(self, profile):
         
