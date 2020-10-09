@@ -9,15 +9,8 @@ from astropy.cosmology import FlatLambdaCDM
 import matplotlib.pyplot as plt
 import astropy.units as u
 import numpy as np
-from sampler import fitters
-from astropy.coordinates import SkyCoord
 from astropy.table import Table
-from scipy.optimize import curve_fit
 import cluster_toolkit as ct
-import GCRCatalogs
-import os
-import fnmatch
-import scipy
 import math
 
 import clmm.polaraveraging as pa
