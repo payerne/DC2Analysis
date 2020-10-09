@@ -113,6 +113,7 @@ class Stacking():
     
     def AddCatalog(self, cl_stack, Shapenoise = True):
         
+        
         """add individual binned profile from individual galaxy catalog"""
         
         if self.is_deltasigma == None:
@@ -121,7 +122,14 @@ class Stacking():
     
         if Shapenoise == True:
             
-            cl_stack = shapenoise(cl_stack)
+            try : 
+            
+                cl_stack = shapenoise(cl_stack)
+            
+            except KeyError: 
+                
+                print('shear measure are not not available')
+        
         
         profile_stack = make_gt_profile(cl_stack, self.r_up, self.r_low, self.n_bins, self.is_deltasigma, self.cosmo)
     
