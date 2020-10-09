@@ -6,7 +6,6 @@ except:
     notebook_install.install_clmm_pipeline(upgrade=False)
     import clmm
 from astropy.cosmology import FlatLambdaCDM
-import matplotlib.pyplot as plt
 import astropy.units as u
 import numpy as np
 from astropy.table import Table
@@ -34,7 +33,7 @@ def shapenoise(cl_stack):
     
     return cl_stack
 
-def make_gt_profile(cl_stack, up, down, n_bins, is_deltasigma, cosmo):
+def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     
     if (cl_stack != 1):
         
@@ -110,9 +109,15 @@ class Stacking():
         
         self.is_deltasigma = is_deltasigma
         
-    
-    def AddCatalog(self, cl_stack, Shapenoise = True):
+    def _add_cluster_z(self, gc):
         
+        self.z_cluster_list.append(gc.z)
+        
+    def _add_background_galaxy_z(self, gc):
+        
+        self.z_galaxy_list.append(gc.galcat['z'])
+        
+    def AddProfile(self, profile):
         
         """add individual binned profile from individual galaxy catalog"""
         
@@ -120,36 +125,22 @@ class Stacking():
             
             raise ValueError(f"type of profile not defined yet ! available : tangential reduced shear or excess surface density")
     
-        if Shapenoise == True:
-            
-            try : 
-            
-                cl_stack = shapenoise(cl_stack)
-            
-            except KeyError: 
-                
-                print('shear measure are not not available')
+        self.gt_list.append(profile['gt'])
         
+        self.variance_gt_list.append(np.nan_to_num(profile['gt_err']**2, nan = np.nan, posinf = np.nan, neginf = np.nan))
         
-        profile_stack = make_gt_profile(cl_stack, self.r_up, self.r_low, self.n_bins, self.is_deltasigma, self.cosmo)
-    
-        self.z_cluster_list.append(cl_stack.z)
-        self.z_galaxy_list.extend(list(cl_stack.galcat['z']))
-        self.gt_list.append(profile_stack['gt'])
-        
-        self.variance_gt_list.append(np.nan_to_num(profile_stack['gt_err']**2, nan = np.nan, posinf = np.nan, neginf = np.nan))
-        self.radial_axis_list.append(profile_stack['radius'])
+        self.radial_axis_list.append(profile['radius'])
         
         self.n_stacked_gt += 1
         
         
-    def MakeShearProfile(self, method):
+    def MakeStackedProfile(self, method):
         
         """Calculates the stacked profile from individual profiles"""
         
         if self.n_stacked_gt in [0,1]:
             
-            raise ValueError(f"Problem for making stack stategy : {self.n_stacked_gt} loaded galaxy catalog(s)")
+            raise ValueError(f"Problem for making stack strategy : {self.n_stacked_gt} loaded galaxy catalog(s)")
     
         gt = np.array(self.gt_list)
         variance_gt = np.array(self.variance_gt_list) 
@@ -168,8 +159,11 @@ class Stacking():
         profile = Table()
             
         gt_average = np.nansum(gt*weight, axis=0)
+        
         gt_average_dispersion = np.sqrt(np.nansum(weight*(gt - gt_average)**2,axis=0))
+        
         radius_average = np.nansum(weight*radius, axis=0)
+        
         radius_average_dispersion = np.sqrt(np.nansum(weight*(radius - radius_average)**2,axis=0))
 
         profile['gt'] = gt_average
