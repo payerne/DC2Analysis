@@ -16,42 +16,28 @@ import clmm.polaraveraging as pa
 import clmm.utils as utils
 
 import modelling as model
-    
-def shapenoise(cl_stack):
-    
-    es1 = cl_stack.galcat['e1_true']
-    es2 = cl_stack.galcat['e2_true']
-    gamma1 = cl_stack.galcat['shear1']
-    gamma2 = cl_stack.galcat['shear2']
-    kappa = cl_stack.galcat['kappa']
-                
-    e1_m, e2_m = utils.compute_lensed_ellipticity(es1, es2, gamma1, gamma2, kappa)
-                
-    cl_stack.galcat['e1'] = e1_m
-    cl_stack.galcat['e2'] = e2_m
-    
-    return cl_stack
 
 def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     
     """
         cosmo : Astropy table
     """
-    
-    if (cl_stack != 1):
         
-        cl_stack.compute_tangential_and_cross_components(geometry="flat", is_deltasigma = is_deltasigma, cosmo = cosmo)
-        
-        bin_edges = pa.make_bins(down, up , n_bins, method='evenlog10width')
-        
-        profile = cl_stack.make_binned_profile("radians", "Mpc", bins=bin_edges,cosmo=cosmo,include_empty_bins= True,gal_ids_in_bins=True)
+    cl_stack.compute_tangential_and_cross_components(geometry="flat", is_deltasigma = is_deltasigma, cosmo = cosmo)
 
-        profile['gt'] = [np.nan if (math.isnan(i)) else i for i in profile['gt']]
-        profile['gt_err'] = [np.nan if math.isnan(profile['gt'][i]) else err for i,err in enumerate(profile['gt_err'])]
-        profile['radius'] = [np.nan if math.isnan(profile['gt'][i]) else radius for i,radius in enumerate(profile['radius'])]
-        profile['cluster_z'] = cl_stack.z
-        
-        return profile
+    bin_edges = pa.make_bins(down, up , n_bins, method='evenlog10width')
+
+    profile = cl_stack.make_binned_profile("radians", "Mpc", bins=bin_edges,cosmo=cosmo,include_empty_bins= True,gal_ids_in_bins=True)
+
+    profile['gt'] = [np.nan if (math.isnan(i)) else i for i in profile['gt']]
+    
+    profile['gt_err'] = [np.nan if math.isnan(profile['gt'][i]) else err for i,err in enumerate(profile['gt_err'])]
+    
+    profile['radius'] = [np.nan if math.isnan(profile['gt'][i]) else radius for i,radius in enumerate(profile['radius'])]
+    
+    profile['cluster_z'] = cl_stack.z
+
+    return profile
     
     else: 
         

@@ -10,14 +10,30 @@ from astropy.table import Table
 
 import clmm.modeling as modeling
 
-def Duffy_concentration(m, z_cl):
+def Duffy_concentration(m, z_cl, moo):
     
-    r"""return the concentration of a cluster of mass m at given redshift (.Duffy (2007))"""
+    r"""
+    return the concentration of a cluster of mass m at given redshift (A. R. Duffy et al. (2007))
     
-    a , b, c = 10.14, - 0.081,  - 1.01
-    m0 = 2 * 10**(12)
+    """
     
-    return a * ( m/m0 )**b *( 1 + z_cl )**c
+    #concentration relations with M in M_\odot
+    
+    m_pivot = 2 * 10**(12)/moo.cosmo['h']
+    
+    if moo.massdef == 'critial':
+
+        A, B, C = 5.71, -0.084, -0.47
+
+    if moo.massdef == 'mean':
+        
+        A, B, C = 10.14, -0.081, -1.01
+        
+    return A * ( m/m_pivot )**B *( 1 + z_cl )**C
+        
+        
+        
+        
 
 def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     
@@ -43,7 +59,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     """
     m = 10.**logm 
     
-    c = Duffy_concentration(m,cluster_z)
+    c = Duffy_concentration(m, cluster_z, moo)
     
     moo.set_mass(m*moo.cosmo['h']) 
     
@@ -54,6 +70,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     nbins = int(Ngals**(1/2))
     
     hist, bin_edges = np.histogram(z_gal, nbins)
+    
     Delta = bin_edges[1] - bin_edges[0]
     
     bin_center = bin_edges + Delta/2
@@ -71,16 +88,6 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
         shear = hist*moo.eval_reduced_shear(R*moo.cosmo['h'], cluster_z, z)
         
         gt_model.append(np.mean(shear)/nbins)
-        
-        
-        r"""
-        shear = hist*clmm.predict_reduced_tangential_shear(R*cosmo.h,
-                                                                     m*cosmo.h, c,
-                                                                     cluster_z, z, cosmo,                                                          delta_mdef=200,
-                                                                     halo_profile_model='nfw')  
-        gt_model.append(np.mean(shear)/nbins)
-        
-        """
         
     return gt_model
 
@@ -108,7 +115,7 @@ def predict_excess_surface_density(r, logm, cluster_z, z_gal, order, moo):
     """
     m = 10.**logm 
     
-    c = Duffy_concentration(m,cluster_z)
+    c = Duffy_concentration(m, cluster_z, moo)
     
     moo.set_mass(m*moo.cosmo['h']) 
     
