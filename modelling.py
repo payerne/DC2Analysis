@@ -85,7 +85,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     return gt_model
 
 
-def predict_excess_surface_density(r, logm, cluster_z, z_gal, cosmo, order = 0):
+def predict_excess_surface_density(r, logm, cluster_z, z_gal, order, moo):
     
     r"""returns the predict excess surface density
     
@@ -106,29 +106,20 @@ def predict_excess_surface_density(r, logm, cluster_z, z_gal, cosmo, order = 0):
     deltasigma : array_like, float
         The predicted excess surface density zero-order and second-order
     """
-    m = 10**logm
+    m = 10.**logm 
     
     c = Duffy_concentration(m,cluster_z)
     
-    if order == 1:
-        
-        critSD = np.array(clmm.get_critical_surface_density(cosmo, cluster_z, z_gal))
-        meancritSD_1 = np.mean(critSD**(-1))
-        meancritSD_3 = np.mean(critSD**(-3))
+    moo.set_mass(m*moo.cosmo['h']) 
+    
+    moo.set_concentration(c)
     
     deltasigma = []
     
     for i, R in enumerate(r):
         
-        surface_density_nfw = clmm.predict_surface_density(R*cosmo.h, m*cosmo.h, c, cluster_z, cosmo, delta_mdef=200,
-                                   halo_profile_model='nfw')
+        surface_density_nfw = moo.eval_sigma_excess(R*moo.cosmo['h'], cluster_z)
         
-        order_0 = clmm.predict_excess_surface_density(R*cosmo.h, m*cosmo.h, c, cluster_z, cosmo, delta_mdef=200,
-                                   halo_profile_model='nfw')
-        if order == 1:
-            
-            order_0 = order_0 + order_0 * surface_density_nfw * (meancritSD_3/meancritSD_1)
-        
-        deltasigma.append(order_0)
+        deltasigma.append(surface_density_nfw)
         
     return deltasigma

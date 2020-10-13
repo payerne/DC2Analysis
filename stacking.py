@@ -34,6 +34,10 @@ def shapenoise(cl_stack):
 
 def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     
+    """
+        cosmo : Astropy table
+    """
+    
     if (cl_stack != 1):
         
         cl_stack.compute_tangential_and_cross_components(geometry="flat", is_deltasigma = is_deltasigma, cosmo = cosmo)
