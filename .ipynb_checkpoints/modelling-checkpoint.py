@@ -8,6 +8,8 @@ except:
 import numpy as np
 from astropy.table import Table
 
+import clmm.modeling as modeling
+
 def Duffy_concentration(m, z_cl):
     
     r"""return the concentration of a cluster of mass m at given redshift (.Duffy (2007))"""
@@ -17,7 +19,7 @@ def Duffy_concentration(m, z_cl):
     
     return a * ( m/m0 )**b *( 1 + z_cl )**c
 
-def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, cosmo):
+def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     
     r"""returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
     for a collection of background galaxy redshift
@@ -39,28 +41,46 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, cosmo
     gt_model : array_like, float
         The predicted reduced tangential shear (no units)
     """
+    m = 10.**logm 
     
+    c = Duffy_concentration(m,cluster_z)
     
-    m = 10**logm
+    moo.set_mass(m*moo.cosmo['h']) 
+    
+    moo.set_concentration(c)
+    
     Ngals = int(len(z_gal))
+    
     nbins = int(Ngals**(1/2))
     
     hist, bin_edges = np.histogram(z_gal, nbins)
     Delta = bin_edges[1] - bin_edges[0]
     
     bin_center = bin_edges + Delta/2
+    
     bin_center = list(bin_center)
+    
     bin_center.pop(nbins)
+    
     z = bin_center
+    
     gt_model = []
     
-    c = Duffy_concentration(m,cluster_z)
     for i,R in enumerate(r):
+        
+        shear = hist*moo.eval_reduced_shear(R*moo.cosmo['h'], cluster_z, z)
+        
+        gt_model.append(np.mean(shear)/nbins)
+        
+        
+        r"""
         shear = hist*clmm.predict_reduced_tangential_shear(R*cosmo.h,
                                                                      m*cosmo.h, c,
                                                                      cluster_z, z, cosmo,                                                          delta_mdef=200,
                                                                      halo_profile_model='nfw')  
         gt_model.append(np.mean(shear)/nbins)
+        
+        """
         
     return gt_model
 
