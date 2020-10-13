@@ -10,14 +10,27 @@ from astropy.table import Table
 
 import clmm.modeling as modeling
 
-def Duffy_concentration(m, z_cl):
+def Duffy_concentration(m, z_cl, moo):
     
-    r"""return the concentration of a cluster of mass m at given redshift (.Duffy (2007))"""
+    #concentration relations with M in M_\odot
     
-    a , b, c = 10.14, - 0.081,  - 1.01
-    m0 = 2 * 10**(12)
+    if moo.massdef == 'mean':
     
-    return a * ( m/m0 )**b *( 1 + z_cl )**c
+        r"""return the concentration of a cluster of mass m at given redshift (.Duffy (2007))"""
+
+        a , b, c = 10.14, - 0.081,  - 1.01
+        m0 = 2 * 10**(12)
+
+        return a * ( m/m0 )**b *( 1 + z_cl )**c
+    
+    if moo.massdef == 'critial':
+        
+        a, d, m = 57.6 , -0.376 , - 0.078
+        
+        
+        
+        
+        
 
 def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     
