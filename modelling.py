@@ -19,7 +19,7 @@ def Duffy_concentration(m, z_cl, moo):
     
     #concentration relations with M in M_\odot
     
-    m_pivot = 2 * 10**(12)/moo.cosmo['h']
+    m_pivot = 2*10**12/(moo.cosmo['h'])
     
     if moo.massdef == 'critial':
 
@@ -30,9 +30,6 @@ def Duffy_concentration(m, z_cl, moo):
         A, B, C = 10.14, -0.081, -1.01
         
     return A * ( m/m_pivot )**B *( 1 + z_cl )**C
-        
-        
-        
         
 
 def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):

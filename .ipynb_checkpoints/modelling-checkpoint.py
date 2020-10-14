@@ -31,9 +31,6 @@ def Duffy_concentration(m, z_cl, moo):
         
     return A * ( m/m_pivot )**B *( 1 + z_cl )**C
         
-        
-        
-        
 
 def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     

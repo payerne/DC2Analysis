@@ -38,12 +38,7 @@ def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     profile['cluster_z'] = cl_stack.z
 
     return profile
-    
-    else: 
-        
-        print('No profile available')
-        
-        return 1
+
 
 class Stacking():
     
