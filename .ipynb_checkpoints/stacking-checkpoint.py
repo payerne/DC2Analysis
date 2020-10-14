@@ -18,9 +18,28 @@ import modelling as model
 
 def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     
-    """
-        cosmo : Astropy table
-    """
+"""
+    Parameters:
+    ----------
+    
+    cl_stack : GalaxyCluster object
+        .compute_tangential_and_cross_component method from GalaxyCluster has been applied
+    down, up : float
+        lower and upper limit for making binned profile
+    n_bins : float
+        number of bins for binned profiles
+    is_deltasigma : Boolean
+        True is excess surface density is choosen, False is reduced tangential shear is choosen
+    cosmo : Astropy table
+        input cosmology
+    
+    Returns:
+    -------
+    
+    profile : Table
+        profile with np.nan values for empty gt, gt_err, radius bins
+    
+"""
 
     bin_edges = pa.make_bins(down, up , n_bins, method='evenlog10width')
 
@@ -31,8 +50,6 @@ def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     profile['gt_err'] = [np.nan if math.isnan(profile['gt'][i]) else err for i,err in enumerate(profile['gt_err'])]
     
     profile['radius'] = [np.nan if math.isnan(profile['gt'][i]) else radius for i,radius in enumerate(profile['radius'])]
-    
-    profile['cluster_z'] = cl_stack.z
 
     return profile
 
