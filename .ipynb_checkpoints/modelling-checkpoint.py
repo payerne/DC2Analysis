@@ -19,7 +19,7 @@ def Duffy_concentration(m, z_cl, moo):
     
     #concentration relations with M in M_\odot
     
-    m_pivot = 2 * 10**(12)/moo.cosmo['h']
+    m_pivot = 2*10**12/(moo.cosmo['h'])
     
     if moo.massdef == 'critial':
 

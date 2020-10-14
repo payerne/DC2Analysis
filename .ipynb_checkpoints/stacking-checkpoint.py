@@ -9,7 +9,6 @@ from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 import numpy as np
 from astropy.table import Table
-import cluster_toolkit as ct
 import math
 
 import clmm.polaraveraging as pa
