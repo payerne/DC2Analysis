@@ -21,8 +21,6 @@ def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     """
         cosmo : Astropy table
     """
-        
-    cl_stack.compute_tangential_and_cross_components(geometry="flat", is_deltasigma = is_deltasigma, cosmo = cosmo)
 
     bin_edges = pa.make_bins(down, up , n_bins, method='evenlog10width')
 
@@ -159,10 +157,101 @@ class Stacking():
             
             
         
+class StackingWeight():
+    
+    r"""
+    Object that contains the stacked galaxy cluster metadata and backgound galaxy relevant quantities for reduced tangential shear and/or excess surface density
+    
+    Attributes
+    ---------
+    z_cluster_list : array_like
+        list of selected cluster redshifts
+    z_galaxy_list : array_like
+        list of all selected backgound galaxy redshifts
+    gt_list : array_like
+        list of type-chosen profile
+    variance_gt_list : array_like
+        list of type-chosen profile variance
+        
+    cosmo : astropy
+        input cosmology
+        
+    profile : Table
+        Table containing Stacked profile calculation, error and radial axis 
+    r_low, r_up : float like
+        lower and upper limit for the radial axis (projected physical distance to cluster center) in Mpc
+    n_bins : int type
+        number of bins to make binned profile
+    
+    """
+    
+    def __init__(self, r_low, r_up, n_bins, cosmo):
+        
+        self.z_cluster_list = []
+        self.radial_axis = []
+        self.cosmo = cosmo
+        
+        self.radial_axis = np.zeros(n_bins)
+        self.weight_per_bin = np.zeros(n_bins)
+        self.unweighted_signal_per_bin = np.zeros(n_bins)
+        self.stacked_signal = np.zeros(n_bins)
+        
+        self.r_low = r_low
+        self.r_up = r_up
+        self.n_bins = n_bins
+        
+        self.n_stacked_cluster = 0
+        self.average_z = 0
+        self.is_deltasigma = None
+        self.profile = None
+        
+    def SelectType(self, is_deltasigma = True):
+        
+        """Indicates the type of profile to bin"""
+        
+        self.is_deltasigma = is_deltasigma
+        
+    def _add_cluster_z(self, gc):
+        
+        self.z_cluster_list.append(gc.z)
+        
+    def _add_ellipticity(self, cl, profile):
+        
+        self.n_stacked_cluster += 1
+        
+        for i, R in enumerate(profile['radius']):
+            
+            r = profile['radius'][i]
+            self.radial_axis[i] += i
+            
+            galist = profile['gal_id'][i]
+            critical_density_2 = (cl.galcat['sigma_c'][galist])**(-2)
+            delta_sigma = cl.galcat['et'][galist]
+            
+            self.weight_per_bin[i] += np.sum(critical_density_2)
+            self.unweighted_signal_per_bin[i] += np.sum(critical_density_2 * delta_sigma)
+            
+        
+    def MakeStackedProfile(self):
+        
+        for i in range(self.n_bins):
+            
+            self.stacked_signal[i] = self.unweighted_signal_per_bin[i] / self.weight_per_bin[i]
+            
+            self.radial_axis[i] = self.radial_axis[i]/self.n_stacked_cluster
+            
+        profile = Table()
+        profile['gt'] = self.stacked_signal
+        profile['radius'] = self.radial_axis
+        profile['gt_err'] = np.zeros(self.n_bins)
+            
+        self.profile = profile
         
         
         
+
         
+    
         
         
         
