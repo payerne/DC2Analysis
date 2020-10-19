@@ -13,12 +13,11 @@ import math
 
 import clmm.polaraveraging as pa
 import clmm.utils as utils
-
 import modelling as model
 
 def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     
-"""
+    r"""
     Parameters:
     ----------
     
@@ -39,8 +38,7 @@ def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     profile : Table
         profile with np.nan values for empty gt, gt_err, radius bins
     
-"""
-
+    """
     bin_edges = pa.make_bins(down, up , n_bins, method='evenlog10width')
 
     profile = cl_stack.make_binned_profile("radians", "Mpc", bins=bin_edges,cosmo=cosmo,include_empty_bins= True,gal_ids_in_bins=True)
@@ -239,7 +237,7 @@ class StackingWeight():
         for i, R in enumerate(profile['radius']):
             
             r = profile['radius'][i]
-            self.radial_axis[i] += i
+            self.radial_axis[i] += r
             
             galist = profile['gal_id'][i]
             critical_density_2 = (cl.galcat['sigma_c'][galist])**(-2)
