@@ -28,7 +28,7 @@ def _add_random_ellipticity(cl_stack):
     Returns:
     -------
     cl_stack : GalaxyCluster object
-        with random ellipticity contribution
+        with random ellipticity contribution (with local constraint norm(epsilon) < 1)
 
      """
     e1 = cl_stack.galcat['e1']
@@ -38,14 +38,44 @@ def _add_random_ellipticity(cl_stack):
     
     size = len(cl_stack.galcat['e1'])
     
+    norm_e_random_max = 1 - np.sqrt(e1**2 + e2**2)
+    
+    norm_e_random = np.random.random() * norm_e_random_max
+    
     cos_random = np.random.random(size) * 2 - 1
     
     sin_random = np.sqrt( 1 - cos_random ** 2 )
 
-    e_small = 0.001 * ( cos_random + 1j * sin_random )
+    e_small = norm_e_random * ( cos_random + 1j * sin_random )
+    
+    e_tot = e + e_small
 
-    cl_stack.galcat['e1'] = e_random.real
-    cl_stack.galcat['e2'] = e_random.imag
+    cl_stack.galcat['e1'] = e.real
+    cl_stack.galcat['e2'] = e.imag
     
     return cl_stack
+
+def cov(x,y):
+    
+    r"""
+    Attributes:
+    ----------
+    
+    x : array like 
+        (realization of the random variable X)
+    y : array like 
+    (realization of the random variable X)
+    
+    Returns:
+    -------
+    
+    the covariance of x and y
+    
+    """
+    
+    x, y = np.array(x), np.array(y)
+    
+    covariance = np.mean( (x-np.mean(x)) * (x - np.mean(y)) )
+    
+    return covariance
     

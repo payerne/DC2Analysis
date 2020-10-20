@@ -13,15 +13,13 @@ import clmm.modeling as modeling
 def Duffy_concentration(m, z_cl, moo):
     
     r"""
-    return the concentration of a cluster of mass m at given redshift (A. R. Duffy et al. (2007))
+    return the concentration of a cluster of mass m (Solar Mass) at given redshift z_cl (A. R. Duffy et al. (2007))
     
     """
     
-    #concentration relations with M in M_\odot
-    
     m_pivot = 2*10**12/(moo.cosmo['h'])
     
-    if moo.massdef == 'critial':
+    if moo.massdef == 'critical':
 
         A, B, C = 5.71, -0.084, -0.47
 
@@ -58,7 +56,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     
     c = Duffy_concentration(m, cluster_z, moo)
     
-    moo.set_mass(m*moo.cosmo['h']) 
+    moo.set_mass(m) 
     
     moo.set_concentration(c)
     
@@ -82,7 +80,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     
     for i,R in enumerate(r):
         
-        shear = hist*moo.eval_reduced_shear(R*moo.cosmo['h'], cluster_z, z)
+        shear = hist*moo.eval_reduced_shear(R, cluster_z, z)
         
         gt_model.append(np.mean(shear)/nbins)
         
@@ -114,7 +112,7 @@ def predict_excess_surface_density(r, logm, cluster_z, z_gal, order, moo):
     
     c = Duffy_concentration(m, cluster_z, moo)
     
-    moo.set_mass(m*moo.cosmo['h']) 
+    moo.set_mass(m) 
     
     moo.set_concentration(c)
     
@@ -122,7 +120,7 @@ def predict_excess_surface_density(r, logm, cluster_z, z_gal, order, moo):
     
     for i, R in enumerate(r):
         
-        surface_density_nfw = moo.eval_sigma_excess(R*moo.cosmo['h'], cluster_z)
+        surface_density_nfw = moo.eval_sigma_excess(R, cluster_z)
         
         deltasigma.append(surface_density_nfw)
         

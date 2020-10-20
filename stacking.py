@@ -12,8 +12,9 @@ from astropy.table import Table
 import math
 
 import clmm.polaraveraging as pa
-import clmm.utils as utils
-import modelling as model
+import clmm.galaxycluster as gc
+import clmm.modeling as modeling
+from clmm import Cosmology 
 
 def make_gt_profile(cl_stack, down, up, n_bins, is_deltasigma, cosmo):
     
@@ -129,7 +130,6 @@ class Stacking():
         
         self.n_stacked_gt += 1
         
-        
     def MakeStackedProfile(self, method):
         
         """Calculates the stacked profile from individual profiles"""
@@ -169,7 +169,6 @@ class Stacking():
         
         self.average_z = np.mean(self.z_cluster_list)
         self.profile = profile
-            
             
         
 class StackingWeight():
