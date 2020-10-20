@@ -130,7 +130,6 @@ class Stacking():
         
         self.n_stacked_gt += 1
         
-        
     def MakeStackedProfile(self, method):
         
         """Calculates the stacked profile from individual profiles"""
