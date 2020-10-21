@@ -23,13 +23,14 @@ def add_random_ellipticity(cl):
     Parameters:
     ----------
     cl : GalaxyCluster object
-        .compute_tangential_and_cross_component method is not applied
+        compute_tangential_and_cross_component method is not applied
         
     Returns:
     -------
     cl : GalaxyCluster object
-        with random ellipticity rotation
+        with random ellipticity rotation (vanishing the shear signal)
      """
+    
     e1, e2 = cl.galcat['e1'], cl.galcat['e2']
     
     e = e1 + 1j * e2
@@ -93,7 +94,7 @@ def random_rotate_ellipticity(cl):
     
     return cl
 
-def _randomize_redshift(cl):
+def randomize_redshift(cl):
     
 
     r"""
@@ -105,13 +106,13 @@ def _randomize_redshift(cl):
     Returns:
     -------
     cl : GalaxyCluster object
-        with randomized redshift using pzpdf.
+        with randomized redshift using pzpdf of cl.
 
      """
     
-    if cl.galcat['pzsigma'] not in cl:
+    if 'pzsigma' not in cl.galcat.keys():
         
-        print('no redshift error in your catalog')
+        print('no implemented redshift error in your catalog !')
         
         return cl
     
@@ -119,53 +120,68 @@ def _randomize_redshift(cl):
 
         size = len(cl.galcat['z'])
         
-        probability = cl.galcat['pdfz']/np.sum(cl.galcat['pdfz'])
+        pz_pdf = np.array(cl.galcat['pdfz'])
+        
+        norm_pz_pdf = [np.sum(pz_pdf[i][:]) for i in range(size)]
+        
+        probability = cl.galcat['pdfz']/norm_pz_pdf
         
         zaxis = cl.galcat['pzbins']
         
-        z_randomized = np.random.choice(zaxis, size , p=probablilty)
+        z_random = np.random.choice( zaxis , size , p = probablilty)
         
-        cl.galcat['z'] = z_randomized
-    
-    return cl
+        cl.galcat['z'] = z_random
+        
+        return cl
 
 class Statistics():
+    
+    r"""
+    A class for statisitcal analysis of data
+    """
 
     def __init__(self, n_random_variable):
         
-        X_label = ['Signal(R_' + f'{i})' for i in range(n_random_variable)]
-        X_label = tuple(X_label)
-        self.X_label = X_label
-        
-        DataType = ['f4' for i in range(n_random_variable)]
-        DataType = tuple(DataType)
+        self.X_label = tuple(['X_' + f'{i}' for i in range(n_random_variable)])
+ 
+        DataType = tuple(['f4' for i in range(n_random_variable)])
             
-        self.X = Table(names = X_label, dtype = DataType)
+        self.X = Table(names = self.X_label, dtype = DataType)
+        
         self.n_random_variable = n_random_variable
-        self.real = 0
+        
+        self.realization = 0
         
     def _add_realization(self, x_new):
     
         r"""
         add row for each new realization of random variable
         """
-        self.real += 1
+        
+        self.realization += 1
+        
         self.X.add_row(tuple(x_new))
         
     def mean(self):
     
-        average_signal = []
+        mean_X = []
         
         for x_label in self.X_label : 
             
-            average_signal.append(np.mean(self.X[x_label]))
+            mean_X.append(np.mean(self.X[x_label]))
     
-        return average_signal
+        return mean_X
         
         
     def covariance(self):
         
-        cov = np.zeros((self.n_random_variable,self.n_random_variable))
+        r"""
+        
+        returns the covariance matrix of the random variable X_i
+        
+        """
+        
+        cov_matrix = np.zeros((self.n_random_variable,self.n_random_variable))
         
         for i, x_label in enumerate(self.X_label) : 
             
@@ -175,8 +191,8 @@ class Statistics():
                 
                 y = self.X[y_label]
                 
-                cov[i,j] = np.mean( (x-np.mean(x)) * (y - np.mean(y)) )
+                cov_matrix[i,j] = np.sum( (x-np.mean(x)) * (y - np.mean(y)) ) / (self.realization - 1)
                 
-        return cov
+        return cov_matrix
 
 
