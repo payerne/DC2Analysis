@@ -17,7 +17,7 @@ import clmm.utils as utils
 import modelling as model
 
 
-def add_random_ellipticity(cl):
+def random_rotate_ellipticity(cl):
 
     r"""
     Parameters:
@@ -45,7 +45,7 @@ def add_random_ellipticity(cl):
 
     rotation = ( cos_random + 1j * sin_random )
     
-    e_tot = e*rotation
+    e_tot = e * rotation
 
     cl.galcat['e1'] = e_tot.real
     
@@ -54,7 +54,7 @@ def add_random_ellipticity(cl):
     return cl
 
 
-def random_rotate_ellipticity(cl):
+def add_random_ellipticity(cl):
 
     r"""
     Parameters:
@@ -88,9 +88,9 @@ def random_rotate_ellipticity(cl):
     
     e_tot = e + e_small
 
-    cl.galcat['e1'] = e.real
+    cl.galcat['e1'] = e_tot.real
     
-    cl.galcat['e2'] = e.imag
+    cl.galcat['e2'] = e_tot.imag
     
     return cl
 
@@ -137,20 +137,30 @@ def randomize_redshift(cl):
     
 def bootstrap(cl):
     
-        r"""
-    Parameters:
-    ----------
-    cl : GalaxyCluster object
-        .compute_tangential_and_cross_component method is not applied
-        
-    Returns:
-    -------
-    cl : GalaxyCluster object
-        with bootstrap sampled catalog cl
+    r"""
+Parameters:
+----------
+cl : GalaxyCluster object
+    .compute_tangential_and_cross_component method is not applied
 
-     """
+Returns:
+-------
+cl : GalaxyCluster object
+    with bootstrap sampled catalog cl
+
+ """
+    
+    size = len(cl.galcat['z'])
+    
+    index = [i for i in range(size)]
+    
+    index_random = np.random.choice(index, size)
+    
+    cl_bootstrap = cl
+    
+    for i, j in enumerate(index_random):
         
-    cl_bootstrap = np.random.choice(cl, len(cl.galcat['z']))
+        cl_bootstrap.galcat[j] = cl.galcat[i]
     
     return cl_bootstrap
                       
