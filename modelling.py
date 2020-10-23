@@ -125,3 +125,41 @@ def predict_excess_surface_density(r, logm, cluster_z, z_gal, order, moo):
         deltasigma.append(surface_density_nfw)
         
     return deltasigma
+
+
+def predict_convergence_z_distrib(r, logm, cluster_z, z_gal, moo):
+    
+    m = 10.**logm 
+    
+    c = Duffy_concentration(m, cluster_z, moo)
+    
+    moo.set_mass(m) 
+    
+    moo.set_concentration(c)
+    
+    Ngals = int(len(z_gal))
+    
+    nbins = int(Ngals**(1/2))
+    
+    hist, bin_edges = np.histogram(z_gal, nbins)
+    
+    Delta = bin_edges[1] - bin_edges[0]
+    
+    bin_center = bin_edges + Delta/2
+    
+    bin_center = list(bin_center)
+    
+    bin_center.pop(nbins)
+    
+    z = bin_center
+    
+    kappa_model = []
+    
+    for i,R in enumerate(r):
+        
+        kappa = hist*moo.eval_convergence(R, cluster_z, z)
+        
+        kappa_model.append(np.mean(kappa)/nbins)
+        
+    return kappa_model
+
