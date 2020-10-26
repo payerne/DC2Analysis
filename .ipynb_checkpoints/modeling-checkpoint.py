@@ -30,6 +30,63 @@ def Duffy_concentration(m, z_cl, moo):
     return A * ( m/m_pivot )**B *( 1 + z_cl )**C
         
 
+#def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
+    
+    r"""returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
+    for a collection of background galaxy redshift
+    
+    Parameters
+    ----------
+    r : array_like, float
+        Rrojected radius form the cluster center in Mpc
+    logm : float
+        The quantity log10(M200m) where M200m is the 200m-mass of the galaxy cluster in M_\odot
+    cluster_z : float
+        Redshift of the galaxy cluster
+    z_gal : list
+        The list of background galaxy redshifts
+    cosmo : astropy Table
+    
+    Returns
+    -------
+    gt_model : array_like, float
+        The predicted reduced tangential shear (no units)
+    """
+#    m = 10.**logm 
+    
+#    c = Duffy_concentration(m, cluster_z, moo)
+    
+#    moo.set_mass(m) 
+    
+#    moo.set_concentration(c)
+    
+#    Ngals = int(len(z_gal))
+    
+#    nbins = int(Ngals**(1/2))
+    
+#    hist, bin_edges = np.histogram(z_gal, nbins)
+    
+#    Delta = bin_edges[1] - bin_edges[0]
+    
+#    bin_center = bin_edges + Delta/2
+    
+#   bin_center = list(bin_center)
+    
+#    bin_center.pop(nbins)
+    
+#    z = bin_center
+    
+#    gt_model = []
+    
+#    for i,R in enumerate(r):
+        
+#        shear = hist*moo.eval_reduced_shear(R, cluster_z, z)
+        
+#        gt_model.append(np.mean(shear)/nbins)
+        
+#    return gt_model
+
+
 def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     
     r"""returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
@@ -59,32 +116,18 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     moo.set_mass(m) 
     
     moo.set_concentration(c)
-    
-    Ngals = int(len(z_gal))
-    
-    nbins = int(Ngals**(1/2))
-    
-    hist, bin_edges = np.histogram(z_gal, nbins)
-    
-    Delta = bin_edges[1] - bin_edges[0]
-    
-    bin_center = bin_edges + Delta/2
-    
-    bin_center = list(bin_center)
-    
-    bin_center.pop(nbins)
-    
-    z = bin_center
-    
+
     gt_model = []
     
-    for i,R in enumerate(r):
+    for i, R in enumerate(r):
         
-        shear = hist*moo.eval_reduced_shear(R, cluster_z, z)
+        z_list = np.array(z_gal[i])
         
-        gt_model.append(np.mean(shear)/nbins)
+        shear = moo.eval_reduced_shear(R, cluster_z, z_list)
         
-    return gt_model
+        gt_model.append(np.mean(shear))
+        
+    return np.array(gt_model)
 
 
 def predict_excess_surface_density(r, logm, cluster_z, z_gal, order, moo):
@@ -163,3 +206,5 @@ def predict_convergence_z_distrib(r, logm, cluster_z, z_gal, moo):
         
     return kappa_model
 
+
+    
