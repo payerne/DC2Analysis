@@ -87,7 +87,7 @@ def Duffy_concentration(m, z_cl, moo):
 #    return gt_model
 
 
-def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
+def  predict_reduced_tangential_shear_z_distrib(r, logm, c, cluster_z, z_gal, moo):
     
     r"""returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
     for a collection of background galaxy redshift
@@ -111,7 +111,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     """
     m = 10.**logm 
     
-    c = Duffy_concentration(m, cluster_z, moo)
+    #c = Duffy_concentration(m, cluster_z, moo)
     
     moo.set_mass(m) 
     
@@ -130,7 +130,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
     return np.array(gt_model)
 
 
-def predict_excess_surface_density(r, logm, cluster_z, z_gal, order, moo):
+def predict_excess_surface_density(r, logm, c, cluster_z, z_gal, order, moo):
     
     r"""returns the predict excess surface density
     
@@ -153,7 +153,7 @@ def predict_excess_surface_density(r, logm, cluster_z, z_gal, order, moo):
     """
     m = 10.**logm 
     
-    c = Duffy_concentration(m, cluster_z, moo)
+    #c = Duffy_concentration(m, cluster_z, moo)
     
     moo.set_mass(m) 
     
