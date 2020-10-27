@@ -47,10 +47,8 @@ class Stacking():
     def __init__(self, r_low, r_up, n_bins, cosmo):
         
         self.z_cluster_list = []
-        self.radial_axis = []
-        
-        self.z_galaxy_list = []
         self.LS_list = []
+        
         self.cosmo = cosmo
         
         self.radial_axis = [[] for i in range(n_bins)]
@@ -83,31 +81,42 @@ class Stacking():
         
         self.n_stacked_cluster += 1
         
-        self.z_galaxy_list.extend(cl.galcat['z'])
-        
         for i, R in enumerate(profile['radius']):
             
             self.radial_axis[i].extend([R])
             
-            galist = profile['gal_id'][i]
+            galist = np.array(profile['gal_id'][i])
             
-            sigma_c = cl.galcat['sigma_c'][galist]
+            galist.astype(int)
             
-            critical_density_2 = (sigma_c)**(-2)
-            
-            delta_sigma = cl.galcat['et'][galist]
-            
-            if self.is_deltasigma == True : signal = delta_sigma 
-            
-            else : signal = delta_sigma/sigma_c
+            if len(galist) == 0:
                 
-            self.signal[i].extend(signal)
+                self.signal[i].extend([np.nan])
+                
+                self.weight[i].extend([np.nan])
+                
+                self.radial_axis[i].extend([np.nan])
+                
+                continue
+            else:
             
-            if self.is_deltasigma == False : self.weight[i].extend([1 for i in range(len(galist))])
-            
-            else : self.weight[i].extend(critical_density_2)
-            
-            self.z_galaxy[i].extend(cl.galcat['z'][galist])
+                sigma_c = cl.galcat['sigma_c'][galist]
+
+                critical_density_2 = 1/(sigma_c**2.)
+
+                delta_sigma = cl.galcat['et'][galist]
+
+                if self.is_deltasigma == True : signal = delta_sigma 
+
+                else : signal = delta_sigma/sigma_c
+
+                self.signal[i].extend(signal)
+
+                if self.is_deltasigma == False : self.weight[i].extend([1 for i in range(len(galist))])
+
+                else : self.weight[i].extend(critical_density_2)
+
+                self.z_galaxy[i].extend(cl.galcat['z'][galist])
             
             
     def _estimate_individual_lensing_signal(self, cl, profile):
@@ -116,21 +125,32 @@ class Stacking():
         
         for i, R in enumerate(profile['radius']):
             
-            galist = profile['gal_id'][i]
+            galist = np.array(profile['gal_id'][i])
             
-            sigma_c = cl.galcat['sigma_c'][galist]
+            galist.astype(int)
             
-            if self.is_deltasigma == False : weight = [1 for i in range(len(galist))]
+            if len(galist) == 0 :
+                
+                gt_individual.append(np.nan)
+                
+                continue
+                
+            else :
             
-            else: weight = (sigma_c)**(-2)
+                sigma_c = cl.galcat['sigma_c'][galist]
+
+                if self.is_deltasigma == False : weight = [1 for i in range(len(galist))]
+
+                else: weight = (sigma_c)**(-2)
+
+                signal = cl.galcat['et'][galist]
+
+                if self.is_deltasigma == False : signal = cl.galcat['et'][galist]/sigma_c
+
+                gt_individual.append(np.nansum(signal*weight)/np.nansum(weight))
+                
             
-            signal = cl.galcat['et'][galist]
-            
-            if self.is_deltasigma == False : signal = cl.galcat['et'][galist]/sigma_c
-            
-            gt_individual.append(np.nansum(signal*weight)/np.nansum(weight))
-            
-        self.LS_list.append(np.array(gt_individual))
+        self.LS_list.append(gt_individual)
             
 
     def MakeStackedProfile(self):
