@@ -67,23 +67,56 @@ class Stacking():
         
     def _select_type(self, is_deltasigma = True):
         
-        """Indicates the type of profile to bin"""
+        r"""
+        Attributes:
+        ----------
+        is_deltasigma : boolean
+            True if Excess Surface Density, False if Reduced Tangential Shear
+        Returns:
+        -------
+        modify self.is_deltasigma to is_deltasigma
+        """
         
         self.is_deltasigma = is_deltasigma
         
         
     def _add_cluster_redshift(self, cl):
         
+        r"""
+        Attributes:
+        ----------
+        cl : GalaxyCluster catalog
+            object that contains the cluster metadata
+        Returns:
+        -------
+        add the individual cluster redshift to the list of selected cluster for stacking
+        """
+        
         self.z_cluster_list.append(cl.z)
         
         
     def _add_background_galaxies(self, cl, profile):
         
+        r"""
+        Attributes:
+        ----------
+        cl : GalaxyCluster catalog
+            galaxy cluster metadata
+        profile : Table()
+            table of binned profile (CLMM)
+        Returns:
+        -------
+        Add individual cluster background galaxy redshifts to each bin in radius
+        Add individual cluster weights to stack //
+        Add individual cluster lensing quantities to stack //
+        Add +1 to self.n_stacked_cluster
+        """
+        
         self.n_stacked_cluster += 1
         
         for i, R in enumerate(profile['radius']):
             
-            self.radial_axis[i].extend([R])
+            #self.radial_axis[i].extend([R])
             
             galist = np.array(profile['gal_id'][i])
             
@@ -91,13 +124,14 @@ class Stacking():
             
             if len(galist) == 0:
                 
-                self.signal[i].extend([np.nan])
+                self.signal[i].append(np.nan)
                 
-                self.weight[i].extend([np.nan])
+                self.weight[i].append(np.nan)
                 
-                self.radial_axis[i].extend([np.nan])
+                self.radial_axis[i].append(np.nan)
                 
                 continue
+                
             else:
             
                 sigma_c = cl.galcat['sigma_c'][galist]
@@ -117,6 +151,8 @@ class Stacking():
                 else : self.weight[i].extend(critical_density_2)
 
                 self.z_galaxy[i].extend(cl.galcat['z'][galist])
+                
+                self.radial_axis[i].append(R)
             
             
     def _estimate_individual_lensing_signal(self, cl, profile):
@@ -159,19 +195,18 @@ class Stacking():
         
         gt_stack = []
         
-        radius_stack = []
-        
         for i in range(self.n_bins):
             
-            gt_stack.append(np.nansum(np.array(self.signal[i])*np.array(self.weight[i]))/np.nansum(np.array(self.weight[i])))
+            gt = np.nansum(np.array(self.signal[i])*np.array(self.weight[i]))/np.nansum(np.array(self.weight[i]))
             
-            radius_stack.append(np.nanmean(self.radial_axis[i]))
+            gt_stack.append(gt)
+            
             
         profile = Table()
         
         profile['gt'] = gt_stack
         
-        profile['radius'] = radius_stack
+        profile['radius'] = np.nanmean(self.radial_axis, axis = 1)
             
         self.profile = profile
         
@@ -180,11 +215,39 @@ class Stacking():
         r"""
         Add standard deviation of the stacked profile to individual selected clusters 
         """
-
-        self.profile['gt_err'] = np.sqrt(np.nanmean((self.LS_list - self.profile['gt'])**2, axis = 0))
-
-
-
-
         
+        gt_err = []
         
+        for i in range(self.n_bins):
+            
+            gt_at_R = np.array(self.LS_list)[:,i]
+            
+            mask = np.logical_not(np.isnan(np.array(gt_at_R)))
+            
+            n = len(gt_at_R[mask])
+            
+            if n > 1 : 
+            
+                gt_err.append(np.sqrt( np.nanmean((gt_at_R - self.profile['gt'][i])**2))* (n / (n - 1) ))
+                
+            else : gt_err.append(np.nan)
+
+        self.profile['gt_err'] = gt_err
+        
+    def _reshape_data(self):
+        
+        r"""
+        Reshape self.profile excluding 1 halo stack
+        """
+        
+        profile_reshape = Table()
+        
+        mask = np.invert(np.isnan(np.array(self.profile['gt_err']).astype(float)))
+        
+        profile_reshape['gt'] = self.profile['gt'][mask]
+        
+        profile_reshape['radius'] = self.profile['radius'][mask]
+        
+        profile_reshape['gt_err'] = self.profile['gt_err'][mask]
+        
+        self.profile = profile_reshape

@@ -28,64 +28,6 @@ def Duffy_concentration(m, z_cl, moo):
         A, B, C = 10.14, -0.081, -1.01
         
     return A * ( m/m_pivot )**B *( 1 + z_cl )**C
-        
-
-#def  predict_reduced_tangential_shear_z_distrib(r, logm, cluster_z, z_gal, moo):
-    
-    r"""returns the predict reduced tangential shear at physical distance r from the cluster center of mass m
-    for a collection of background galaxy redshift
-    
-    Parameters
-    ----------
-    r : array_like, float
-        Rrojected radius form the cluster center in Mpc
-    logm : float
-        The quantity log10(M200m) where M200m is the 200m-mass of the galaxy cluster in M_\odot
-    cluster_z : float
-        Redshift of the galaxy cluster
-    z_gal : list
-        The list of background galaxy redshifts
-    cosmo : astropy Table
-    
-    Returns
-    -------
-    gt_model : array_like, float
-        The predicted reduced tangential shear (no units)
-    """
-#    m = 10.**logm 
-    
-#    c = Duffy_concentration(m, cluster_z, moo)
-    
-#    moo.set_mass(m) 
-    
-#    moo.set_concentration(c)
-    
-#    Ngals = int(len(z_gal))
-    
-#    nbins = int(Ngals**(1/2))
-    
-#    hist, bin_edges = np.histogram(z_gal, nbins)
-    
-#    Delta = bin_edges[1] - bin_edges[0]
-    
-#    bin_center = bin_edges + Delta/2
-    
-#   bin_center = list(bin_center)
-    
-#    bin_center.pop(nbins)
-    
-#    z = bin_center
-    
-#    gt_model = []
-    
-#    for i,R in enumerate(r):
-        
-#        shear = hist*moo.eval_reduced_shear(R, cluster_z, z)
-        
-#        gt_model.append(np.mean(shear)/nbins)
-        
-#    return gt_model
-
 
 def  predict_reduced_tangential_shear_z_distrib(r, logm, c, cluster_z, z_gal, moo):
     
@@ -109,9 +51,8 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, c, cluster_z, z_gal, mo
     gt_model : array_like, float
         The predicted reduced tangential shear (no units)
     """
-    m = 10.**logm 
     
-    #c = Duffy_concentration(m, cluster_z, moo)
+    m = 10.**logm 
     
     moo.set_mass(m) 
     
@@ -211,32 +152,3 @@ def predict_shear_z_distrib(r, logm, c, cluster_z, z_gal, moo):
         signal.append(np.mean(s))
         
     return np.array(signal)
-    
-    #Ngals = int(len(z_gal))
-    
-    #nbins = int(Ngals**(1/2))
-    
-    #hist, bin_edges = np.histogram(z_gal, nbins)
-    
-    #Delta = bin_edges[1] - bin_edges[0]
-    
-    #bin_center = bin_edges + Delta/2
-    
-   # bin_center = list(bin_center)
-    
-    #bin_center.pop(nbins)
-    
-    #z = bin_center
-    
-    #kappa_model = []
-    
-    #for i,R in enumerate(r):
-        
-    #    kappa = hist*moo.eval_convergence(R, cluster_z, z)
-        
-    #    kappa_model.append(np.mean(kappa)/nbins)
-        
-    #return kappa_model
-
-
-    
