@@ -14,7 +14,7 @@ import math
 import clmm.polaraveraging as pa
 import clmm.utils as utils
 
-import modelling as model
+import modeling as model
 
 
 def random_rotate_ellipticity(cl):
@@ -117,20 +117,24 @@ def randomize_redshift(cl):
         return cl
     
     else :
-
-        size = len(cl.galcat['z'])
         
-        pz_pdf = np.array(cl.galcat['pdfz'])
+        n = len(cl.galcat['z'])
         
-        norm_pz_pdf = [np.sum(pz_pdf[i][:]) for i in range(size)]
+        z_random = []
         
-        probability = cl.galcat['pdfz']/norm_pz_pdf
+        for i in range(n):
+            
+            pzpdf = np.array(cl.galcat['pzpdf'][i])
+            
+            norm = np.sum(pzpdf)
+            
+            probability = pzpdf/norm
+            
+            pzbins = np.array(cl.galcat['pzbins'][i])
+    
+            z_random.append(np.random.choice( pzbins , 1 , p = probability)[0])
         
-        zaxis = cl.galcat['pzbins']
-        
-        z_random = np.random.choice( zaxis , size , p = probablilty)
-        
-        cl.galcat['z'] = z_random
+        cl.galcat['z'] = np.array(z_random)
         
         return cl
     

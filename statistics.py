@@ -14,7 +14,7 @@ import math
 import clmm.polaraveraging as pa
 import clmm.utils as utils
 
-import modelling as model
+import modeling as model
 
 class Statistics():
     
@@ -78,6 +78,6 @@ class Statistics():
                 
                 cov_matrix[i,j] = np.sum( (x-np.mean(x)) * (y - np.mean(y)) ) / (self.realization - 1)
                 
-        return cov_matrix
+        self.covariance = cov_matrix
 
 
