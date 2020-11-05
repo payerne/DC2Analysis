@@ -16,6 +16,10 @@ import clmm.galaxycluster as gc
 import clmm.modeling as modeling
 from clmm import Cosmology 
 
+sys.path.append('/pbs/throng/lsst/users/cpayerne/GitForThesis/DC2Analysis')
+
+import statistics as sta
+
 class Stacking():
     
     r"""
@@ -215,24 +219,18 @@ class Stacking():
         r"""
         Add standard deviation of the stacked profile to individual selected clusters 
         """
-        
-        gt_err = []
-        
-        for i in range(self.n_bins):
-            
-            gt_at_R = np.array(self.LS_list)[:,i]
-            
-            mask = np.logical_not(np.isnan(np.array(gt_at_R)))
-            
-            n = len(gt_at_R[mask])
-            
-            if n > 1 : 
-            
-                gt_err.append(np.sqrt( np.nanmean((gt_at_R - self.profile['gt'][i])**2))* (n / (n - 1) ))
-                
-            else : gt_err.append(np.nan)
 
-        self.profile['gt_err'] = gt_err
+        Stat = sta.Statistics(self.n_bins)
+        
+        for i, gt in enumerate(self.LS_list):
+            
+            Stat._add_realization(np.array(gt))
+            
+        Stat.covariance()
+        
+        self.cov = Stat.covariance
+        
+        self.profile['gt_err'] = np.sqrt(self.cov.diagonal())
         
     def _reshape_data(self):
         

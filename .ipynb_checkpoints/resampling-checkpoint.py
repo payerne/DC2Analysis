@@ -156,13 +156,13 @@ cl : GalaxyCluster object
     
     size = len(cl.galcat['z'])
     
-    index = [i for i in range(size)]
+    index = np.array([i for i in range(size)])
     
     index_random = np.random.choice(index, size)
     
     cl_bootstrap = cl
     
-    for i, j in enumerate(index_random):
+    for j, i in enumerate(index_random):
         
         cl_bootstrap.galcat[j] = cl.galcat[i]
     

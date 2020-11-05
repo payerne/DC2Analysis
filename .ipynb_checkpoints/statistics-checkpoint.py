@@ -13,8 +13,8 @@ import math
 
 import clmm.polaraveraging as pa
 import clmm.utils as utils
-
 import modeling as model
+
 
 class Statistics():
     
@@ -49,13 +49,13 @@ class Statistics():
         
     def mean(self):
     
-        mean_X = []
+        mean = []
         
-        for x_label in self.X_label : 
+        for x_label in self.X_label: 
             
-            mean_X.append(np.mean(self.X[x_label]))
+            mean.append(np.nanmean(self.X[x_label]))
     
-        return mean_X
+        self.mean = np.array(mean)
         
         
     def covariance(self):
@@ -72,11 +72,23 @@ class Statistics():
             
             for j, y_label in enumerate(self.X_label) :
                 
-                x = self.X[x_label]
+                if j < i:
+                    
+                    continue
                 
-                y = self.X[y_label]
+                x, y = self.X[x_label], self.X[y_label]
                 
-                cov_matrix[i,j] = np.sum( (x-np.mean(x)) * (y - np.mean(y)) ) / (self.realization - 1)
+                mask = np.logical_not(np.isnan(x * y))
+                
+                x, y = x[mask], y[mask]
+                
+                n = len(x)
+                
+                if n > 1: cov_matrix[i,j] = np.sum( (x-np.mean(x)) * (y - np.mean(y)) ) / (n - 1)
+                
+                else: cov_matrix[i,j] = np.Nan
+                    
+                cov_matrix[j,i] = cov_matrix[i,j]
                 
         self.covariance = cov_matrix
 
