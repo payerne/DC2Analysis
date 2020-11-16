@@ -7,27 +7,39 @@ except:
     import clmm
 import numpy as np
 from astropy.table import Table
-
 import clmm.modeling as modeling
+from scipy.integrate import quad
 
-def Duffy_concentration(m, z_cl, moo):
+def Duffy_concentration(m, z_cl, massdef):
     
     r"""
     return the concentration of a cluster of mass m (Solar Mass) at given redshift z_cl (A. R. Duffy et al. (2007))
     
     """
     
-    m_pivot = 2*10**12/(moo.cosmo['h'])
+    m_pivot = 2*10**12/(0.71)
     
-    if moo.massdef == 'critical':
+    if massdef == 'critical':
 
         A, B, C = 5.71, -0.084, -0.47
 
-    if moo.massdef == 'mean':
+    if massdef == 'mean':
         
         A, B, C = 10.14, -0.081, -1.01
         
     return A * ( m/m_pivot )**B *( 1 + z_cl )**C
+
+def log_normal_Mc_relation(c,M,z, massdef):
+    
+    sigma_lnc = 0.25
+    
+    a = np.sqrt(2*np.pi) * sigma_lnc
+    
+    b = (np.log(c) - np.log(Duffy_concentration(M,z,massdef))) ** 2.
+         
+    d = 2 * sigma_lnc ** 2.
+         
+    return np.array((1/c) * np.exp(-b / d) /a)
 
 def  predict_reduced_tangential_shear_z_distrib(r, logm, c, cluster_z, z_gal, moo):
     
@@ -71,7 +83,7 @@ def  predict_reduced_tangential_shear_z_distrib(r, logm, c, cluster_z, z_gal, mo
     return np.array(gt_model)
 
 
-def predict_excess_surface_density(r, logm, c, cluster_z, z_gal, order, moo):
+def predict_excess_surface_density(r, logm, c, cluster_z, moo):
     
     r"""returns the predict excess surface density
     
@@ -108,7 +120,27 @@ def predict_excess_surface_density(r, logm, c, cluster_z, z_gal, order, moo):
         
     return deltasigma
 
+def predict_excess_surface_density_concentration_scatter(r, logm, cluster_z, z_gal, moo):
+    
+    m = 10.**logm 
+    
+    moo.set_mass(m) 
+    
+    def integrand(c,R,M,z, massdef):
+        
+        moo.set_concentration(c)
+        
+        return moo.eval_sigma_excess(R, z) * log_normal_Mc_relation(c,M,z, massdef)
+    
+    for i, R in enumerate(r):
+        
+        surface_density_nfw = quad(integrand, 0, 50, args = (R,m,cluster_z,moo.massdef))[0]
+        
+        deltasigma.append(surface_density_nfw)
+        
+    return deltasigma
 
+"""
 def predict_convergence_z_distrib(r, logm, c, cluster_z, z_gal, moo):
     
     m = 10.**logm 
@@ -147,8 +179,12 @@ def predict_shear_z_distrib(r, logm, c, cluster_z, z_gal, moo):
         
         z_list = np.array(z_gal[i])
         
-        s = moo.eval_shear(R, cluster_z, z_list)
+        shear = moo.eval_shear(R, cluster_z, z_list)
         
-        signal.append(np.mean(s))
+        convergence = moo.eval_convergence (R, cluster_z, z_list)
+        
+        signal.append(np.mean(shear/(1 - convergence)))
         
     return np.array(signal)
+    
+"""

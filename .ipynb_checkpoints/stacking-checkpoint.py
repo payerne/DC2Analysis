@@ -9,7 +9,7 @@ from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 import numpy as np
 from astropy.table import Table
-import math
+import math as math
 
 import clmm.polaraveraging as pa
 import clmm.galaxycluster as gc
@@ -18,7 +18,7 @@ from clmm import Cosmology
 
 sys.path.append('/pbs/throng/lsst/users/cpayerne/GitForThesis/DC2Analysis')
 
-import statistics as sta
+from statistics_ import Statistics
 
 class Stacking():
     
@@ -120,19 +120,17 @@ class Stacking():
         
         for i, R in enumerate(profile['radius']):
             
-            #self.radial_axis[i].extend([R])
-            
             galist = np.array(profile['gal_id'][i])
             
             galist.astype(int)
             
             if len(galist) == 0:
                 
-                self.signal[i].append(np.nan)
+                self.signal[i].append(math.nan)
                 
-                self.weight[i].append(np.nan)
+                self.weight[i].append(math.nan)
                 
-                self.radial_axis[i].append(np.nan)
+                self.radial_axis[i].append(math.nan)
                 
                 continue
                 
@@ -171,7 +169,7 @@ class Stacking():
             
             if len(galist) == 0 :
                 
-                gt_individual.append(np.nan)
+                gt_individual.append(math.nan)
                 
                 continue
                 
@@ -220,7 +218,7 @@ class Stacking():
         Add standard deviation of the stacked profile to individual selected clusters 
         """
 
-        Stat = sta.Statistics(self.n_bins)
+        Stat = Statistics(self.n_bins)
         
         for i, gt in enumerate(self.LS_list):
             

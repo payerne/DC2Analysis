@@ -1,20 +1,6 @@
-import sys
-sys.path.append('/pbs/throng/lsst/users/cpayerne/CLMM/examples/support')
-try: import clmm
-except:
-    import notebook_install
-    notebook_install.install_clmm_pipeline(upgrade=False)
-    import clmm
-from astropy.cosmology import FlatLambdaCDM
-import astropy.units as u
 import numpy as np
 from astropy.table import Table
-import math
-
-import clmm.polaraveraging as pa
-import clmm.utils as utils
-import modeling as model
-
+import math as math
 
 class Statistics():
     
@@ -86,7 +72,7 @@ class Statistics():
                 
                 if n > 1: cov_matrix[i,j] = np.sum( (x-np.mean(x)) * (y - np.mean(y)) ) / (n - 1)
                 
-                else: cov_matrix[i,j] = np.Nan
+                else: cov_matrix[i,j] = math.nan
                     
                 cov_matrix[j,i] = cov_matrix[i,j]
                 
