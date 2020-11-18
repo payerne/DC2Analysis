@@ -21,14 +21,16 @@ def Duffy_concentration(m, z_cl, massdef):
     
     if massdef == 'critical':
 
-        A, B, C = 5.71, -0.084, -0.47
+        #A, B, C = 5.71, -0.084, -0.47
+        
+        A, B, C = 6.63, -0.09, -0.55 #adjusted on c_200m(M200m)
 
     if massdef == 'mean':
         
         A, B, C = 10.14, -0.081, -1.01
         
     return A * ( m/m_pivot )**B *( 1 + z_cl )**C
-
+    
 def log_normal_Mc_relation(c,M,z, massdef):
     
     sigma_lnc = 0.25

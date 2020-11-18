@@ -51,12 +51,14 @@ class Stacking():
     def __init__(self, r_low, r_up, n_bins, cosmo):
         
         self.z_cluster_list = []
-        self.LS_list = []
+        self.LS_t_list = []
+        self.LS_x_list = []
         
         self.cosmo = cosmo
         
         self.radial_axis = [[] for i in range(n_bins)]
-        self.signal = [[] for i in range(n_bins)]
+        self.signal_t = [[] for i in range(n_bins)]
+        self.signal_x = [[] for i in range(n_bins)]
         self.weight = [[] for i in range(n_bins)]
         self.z_galaxy = [[] for i in range(n_bins)]
         
@@ -126,7 +128,9 @@ class Stacking():
             
             if len(galist) == 0:
                 
-                self.signal[i].append(math.nan)
+                self.signal_t[i].append(math.nan)
+                
+                self.signal_x[i].append(math.nan)
                 
                 self.weight[i].append(math.nan)
                 
@@ -140,13 +144,15 @@ class Stacking():
 
                 critical_density_2 = 1/(sigma_c**2.)
 
-                delta_sigma = cl.galcat['et'][galist]
+                et = cl.galcat['et'][galist]
+                ex = cl.galcat['ex'][galist]
 
-                if self.is_deltasigma == True : signal = delta_sigma 
+                if self.is_deltasigma == True : signalt, signalx = et, ex
 
-                else : signal = delta_sigma/sigma_c
+                else : signalt, signalx = et/sigma_c, ex/sigma_c
 
-                self.signal[i].extend(signal)
+                self.signal_t[i].extend(signalt)
+                self.signal_x[i].extend(signalx)
 
                 if self.is_deltasigma == False : self.weight[i].extend([1 for i in range(len(galist))])
 
@@ -161,6 +167,8 @@ class Stacking():
 
         gt_individual = []
         
+        gx_individual = []
+        
         for i, R in enumerate(profile['radius']):
             
             galist = np.array(profile['gal_id'][i])
@@ -170,6 +178,8 @@ class Stacking():
             if len(galist) == 0 :
                 
                 gt_individual.append(math.nan)
+                
+                gx_individual.append(math.nan)
                 
                 continue
                 
@@ -181,14 +191,15 @@ class Stacking():
 
                 else: weight = (sigma_c)**(-2)
 
-                signal = cl.galcat['et'][galist]
+                et, ex = cl.galcat['et'][galist], cl.galcat['ex'][galist]
 
-                if self.is_deltasigma == False : signal = cl.galcat['et'][galist]/sigma_c
+                if self.is_deltasigma == False : et, ex = cl.galcat['et'][galist]/sigma_c, cl.galcat['ex'][galist]/sigma_c
 
-                gt_individual.append(np.nansum(signal*weight)/np.nansum(weight))
-                
+                gt_individual.append(np.nansum(et*weight)/np.nansum(weight))
+                gx_individual.append(np.nansum(ex*weight)/np.nansum(weight))
             
-        self.LS_list.append(gt_individual)
+        self.LS_t_list.append(gt_individual)
+        self.LS_x_list.append(gx_individual)
             
 
     def MakeStackedProfile(self):
@@ -196,17 +207,22 @@ class Stacking():
         self.z_average = np.mean(self.z_cluster_list)
         
         gt_stack = []
+        gx_stack = []
         
         for i in range(self.n_bins):
             
-            gt = np.nansum(np.array(self.signal[i])*np.array(self.weight[i]))/np.nansum(np.array(self.weight[i]))
+            gt = np.nansum(np.array(self.signal_t[i])*np.array(self.weight[i]))/np.nansum(np.array(self.weight[i]))
+            gx = np.nansum(np.array(self.signal_x[i])*np.array(self.weight[i]))/np.nansum(np.array(self.weight[i]))
             
             gt_stack.append(gt)
+            gx_stack.append(gx)
             
             
         profile = Table()
         
         profile['gt'] = gt_stack
+        
+        profile['gx'] = gx_stack
         
         profile['radius'] = np.nanmean(self.radial_axis, axis = 1)
             
@@ -218,17 +234,20 @@ class Stacking():
         Add standard deviation of the stacked profile to individual selected clusters 
         """
 
-        Stat = Statistics(self.n_bins)
+        Stat_t = Statistics(self.n_bins)
+        Stat_x = Statistics(self.n_bins)
         
-        for i, gt in enumerate(self.LS_list):
+        for i in range(len(self.LS_t_list)):
             
-            Stat._add_realization(np.array(gt))
+            gt, gx = self.LS_t_list[i], self.LS_x_list[i]
             
-        Stat.covariance()
+            Stat_t._add_realization(np.array(gt)), Stat_x._add_realization(np.array(gx))
+            
+        Stat_t.covariance(), Stat_x.covariance()
         
-        self.cov = Stat.covariance
+        self.cov_t, self.cov_x = Stat_t.covariance, Stat_x.covariance
         
-        self.profile['gt_err'] = np.sqrt(self.cov.diagonal())
+        self.profile['gt_err'], self.profile['gx_err'] = np.sqrt(self.cov_t.diagonal()), np.sqrt(self.cov_x.diagonal())
         
     def _reshape_data(self):
         
@@ -240,10 +259,10 @@ class Stacking():
         
         mask = np.invert(np.isnan(np.array(self.profile['gt_err']).astype(float)))
         
-        profile_reshape['gt'] = self.profile['gt'][mask]
+        profile_reshape['gt'], profile_reshape['gx'] = self.profile['gt'][mask], self.profile['gx'][mask]
         
         profile_reshape['radius'] = self.profile['radius'][mask]
         
-        profile_reshape['gt_err'] = self.profile['gt_err'][mask]
+        profile_reshape['gt_err'], profile_reshape['gx_err'] = self.profile['gt_err'][mask], self.profile['gx_err'][mask]
         
         self.profile = profile_reshape
