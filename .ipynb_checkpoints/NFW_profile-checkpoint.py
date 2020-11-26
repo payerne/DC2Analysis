@@ -8,76 +8,89 @@ class Modeling():
     def __init__(self, M200, concentration, cluster_z, mass_def, cosmo):
     
         self.mass_def = mass_def
+        
         self.M200 = M200
+        
         self.concentration = concentration
+        
         self.cosmo = cosmo
+        
         self.cluster_z = cluster_z
         
+        self.rho_critical = self.cosmo.critical_density(self.cluster_z).to(u.Msun / u.Mpc**3).value
+        
+        """
+        alpha : float
+            define the overdensity definition alpha * 200 * rho_critical : 1 if 200c , Om(z) if 200m
+        """
+        
         if self.mass_def == 'mean': self.alpha = self.cosmo.Om(self.cluster_z)
+            
         else : self.alpha = 1.
+            
+        self.r200 = ((self.M200 * 3) / (self.alpha * 800 * np.pi * self.rho_critical)) ** (1./3.)
         
-   ############################
+        self.rs = self.r200/self.concentration
+    
+        """
+        rho_s : float
+            the density rho_s of the cluster in M_sun.Mpc^{-3} such as:
+            rho(r) = rhos / (r/rs)*(1 + r/rs)**2 
+        """
         
-    def rho_c(self, z):
-
-        return self.cosmo.critical_density(z).to(u.Msun / u.Mpc**3).value
+        self.rho_s = (self.concentration**3/self.delta_c(self.concentration)) * (200./3.) * self.alpha * self.rho_critical
 
     def delta_c(self, c):
 
-        return (np.log(1 + c) - c/(1 + c))
-
-    def r200(self):
-        
-        if self.mass_def == 'mean': Omega_m = self.cosmo.Om(self.cluster_z)
-            
-        else : Omega_m = 1
-
-        return ((self.M200 * 3) / (self.alpha * 800 * np.pi * self.rho_c(self.cluster_z))) ** (1./3.)
-
-    def rs(self, r200):
-
-        return r200 / self.concentration
+        return np.log(1 + c) - c/(1 + c)
     
-    def A(self,c):
+    def M(self,r3d):
         
-        first = (c**3/self.delta_c(c))
+        """
+        Parameters:
+        ----------
+        r : float, array
+            the 3d radius from the cluster center
+        Returns:
+        -------
+        M : float, array
+            the mass within a sphere of radius r (M_sun)
+        """
         
-        second = (200./3.)
+        rho_s, rs = self.rho_s, self.rs
         
-        third = self.alpha * self.rho_c(self.cluster_z)
+        x = r3d/rs
         
-        return first * second * third
+        M_in_r = rho_s * (4 * np.pi * rs ** 3) * self.delta_c(x) 
+        
+        return M_in_r
     
-    def M(self,r):
-        
-        A, r200 = self.A(self.concentration), self.r200()
-        
-        r_s = self.rs(r200)
-        
-        x = r/r_s
-        
-        return A * 4 * np.pi * r_s ** 3 * self.delta_c(x) 
-    
-    def density(self,r):
-        
+    def density(self,r3d):
+
+        """
+        Parameters:
+        ----------
+        r3d : float
+            the distance from the cluster center in Mpc
+
+        Returns:
+        -------
+        rho : float
+            the radial dark matter density of the cluster in M_sun.Mpc^{-3} at radius r
+        """
+
         rho_3d = []
-        
-        A = self.A(self.concentration)
-        
-        r200 = self.r200()
-        
-        r_s = self.rs(r200)
-        
-        for R in r:
-            
-            rho_3d.append(A / ((R/r_s) * (1. + R/r_s) ** 2))
-        
+
+        for R in r3d:
+
+            rho_3d.append(self.rho_s / ((R/self.rs) * (1. + R/self.rs) ** 2))
+
         return np.array(rho_3d)
     
-    r"""
-        shear
-        
     """
+    Lensing 
+    """
+    
 
     def kappa_u(self,x):
 

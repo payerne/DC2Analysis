@@ -29,41 +29,31 @@ def M200m_to_M200c_nfw(M200m, c200m, z, cosmo_astropy):
     
     cl_200m = nfw.Modeling(M200m, c200m, z, 'mean', cosmo_astropy)
     
-    M200m = cl_200m.M200
-        
-    r200m = cl_200m.r200()
+    M200m, r200m = cl_200m.M200, cl_200m.r200
     
-    def f1(r200c, z):
+    def f(p):
         
-        M200c = (4*np.pi / 3) * 200 * cl_200m.rho_c(z) * r200c ** 3
+        M200c, c200c = p[0], p[1]
         
-        rs = cl_200m.rs(r200m)
+        cl_200c = nfw.Modeling(M200c, c200c, z, 'critical', cosmo_astropy)
         
-        x = r200c/rs
+        r200c = cl_200c.r200
         
-        a = cl_200m.A(c200m) * 4 * np.pi * rs ** 3 * cl_200m.delta_c(x)
+        """first term"""
         
-        res = M200c - a
+        first_term = M200c - cl_200m.M(r200c)
         
-        return np.array(res)
+        """second term"""
+        
+        second_term = M200m - cl_200c.M(r200m)
+        
+        return first_term, second_term
     
-    r200c_test = fsolve(func = f1, x0 = 0.5*r200m, args=(z))[0]
+    x0 = [M200m, c200m]
     
-    M200c_test = (4*np.pi / 3) * 200 * cl_200m.rho_c(z) * r200c_test ** 3
+    M200c, c200c = fsolve(func = f, x0 = x0)
     
-    def f2(c):
-        
-        x = r200m/r200c_test
-        
-        cl_200c = nfw.Modeling(M200c_test, c, z, 'critical', cosmo_astropy)
-        
-        b = cl_200c.A(c) * 4 * np.pi * (r200c_test/c) ** 3 * cl_200c.delta_c(c * x)
-        
-        return M200m - b
-    
-    c200c_test = fsolve(func = f2, x0 = cl_200m.concentration)[0]
-    
-    return M200c_test, c200c_test
+    return M200c, c200c
 
 
 
@@ -88,24 +78,16 @@ def M200m_to_M200c_einasto(M200m, c200m, alpha200m, z, cosmo_astropy):
     c200c : array
         the concentration c200c associated to mass M200m of the cluster
     alpha200c : float
-        the slpoe parameter for 200c
+        the slope parameter for 200c
     """
     
     cl_200m = ein.Modeling(M200m, c200m, alpha200m, z, 'mean', cosmo_astropy)
     
-    M200m = cl_200m.M200
-        
-    r200m = cl_200m.r200()
+    M200m, c200m, alpha200m = cl_200m.M200, cl_200m.concentration, cl_200m.a
     
-    c200m = cl_200m.concentration
+    r200m = cl_200m.r200
     
-    alpha200m = cl_200m.a
-    
-    up =   1.
-        
-    down = gammainc( 3./alpha200m ,(2./alpha200m) * c200m ** (alpha200m) )
-    
-    Mtot = M200m * (up / down)
+    Mtot = cl_200m.Mtot
         
     def f(p): 
         
@@ -115,31 +97,19 @@ def M200m_to_M200c_einasto(M200m, c200m, alpha200m, z, cosmo_astropy):
         
         cl_200c = ein.Modeling(M200c, c200c, alpha200c, z, 'critical', cosmo_astropy)
         
-        r200c = cl_200c.r200()
+        r200c = cl_200c.r200
         
         """first_term"""
         
-        up =    gammainc( 3./alpha200c ,(2./alpha200c) * ( c200c * r200m/r200c ) ** alpha200c )
-        
-        down =  gammainc( 3./alpha200c ,(2./alpha200c) * c200c ** (alpha200c) )  
-        
-        first_term = M200m - M200c * (up / down)
+        first_term = M200m - cl_200c.M(r200m)
         
         """second_term"""
         
-        up =   1.
-        
-        down =  gammainc( 3./alpha200c ,(2./alpha200c) * c200c ** (alpha200c) )
-        
-        second_term = Mtot - M200c * (up / down)
+        second_term = Mtot - cl_200c.Mtot
         
         """third_term"""
         
-        up =    gammainc( 3./alpha200m ,(2./alpha200m) * ( c200m * r200c/r200m ) ** alpha200m )
-        
-        down =  gammainc( 3./alpha200m ,(2./alpha200m) * c200m ** (alpha200m) )
-        
-        third_term =  M200c - M200m * (up / down)
+        third_term =  M200c - cl_200m.M(r200c)
         
         return first_term, second_term, third_term
     
