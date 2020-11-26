@@ -55,7 +55,7 @@ def M200m_to_M200c_nfw(M200m, c200m, z, cosmo_astropy):
         
         x = r200m/r200c_test
         
-        cl_200c = Modeling(M200c_test, c, z, 'critical', cosmo_astropy)
+        cl_200c = nfw.Modeling(M200c_test, c, z, 'critical', cosmo_astropy)
         
         b = cl_200c.A(c) * 4 * np.pi * (r200c_test/c) ** 3 * cl_200c.delta_c(c * x)
         
