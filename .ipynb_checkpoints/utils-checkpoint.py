@@ -118,6 +118,37 @@ def M200m_to_M200c_einasto(M200m, c200m, alpha200m, z, cosmo_astropy):
     logM200c, c200c, alpha200c = fsolve(f, x0)
     
     return 10**logM200c, c200c, alpha200c
+
+def e1_e2(chi1, chi2):
+    
+    chi = chi1 + 1j * chi2
+    
+    phase = np.angle(chi)
+    
+    norm_chi = np.sqrt(chi1**2 + chi2**2)
+    
+    norm_epsilon = norm_chi / (1 + (1 - norm_chi**2) ** 0.5 )
+    
+    epsilon = norm_epsilon * np.exp(1j * phase)
+    
+    return epsilon.real, epsilon.imag
+
+def epsilon_variance_epsilon(chi1, chi2, variance_chi):
+
+    e1, e2 = e1_e2(chi1, chi2)
+    
+    epsilon = np.sqrt(e1**2 + e2**2)
+    
+    chi = np.sqrt(chi1**2 + chi2**2)
+    
+    depsilon_dchi = epsilon * ( 1./chi + epsilon /( ( 1. - chi ** 1. ) ** 0.5 ) )
+    
+    return ( depsilon_dchi ** 2 ) * variance_chi
+    
+    
+
+    
+    
     
         
         
