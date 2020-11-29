@@ -77,5 +77,3 @@ class Statistics():
                 cov_matrix[j,i] = cov_matrix[i,j]
                 
         self.covariance = cov_matrix
-
-

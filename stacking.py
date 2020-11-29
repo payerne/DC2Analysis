@@ -51,24 +51,35 @@ class Stacking():
     def __init__(self, r_low, r_up, n_bins, cosmo):
         
         self.z_cluster_list = []
+        
         self.LS_t_list = []
+        
         self.LS_x_list = []
         
         self.cosmo = cosmo
         
         self.radial_axis = [[] for i in range(n_bins)]
+        
         self.signal_t = [[] for i in range(n_bins)]
+        
         self.signal_x = [[] for i in range(n_bins)]
+        
         self.weight = [[] for i in range(n_bins)]
+        
         self.z_galaxy = [[] for i in range(n_bins)]
         
         self.r_low = r_low
+        
         self.r_up = r_up
+        
         self.n_bins = n_bins
         
         self.n_stacked_cluster = 0
+        
         self.z_average = 0
+        
         self.is_deltasigma = None
+        
         self.profile = None
         
     def _select_type(self, is_deltasigma = True):
@@ -145,6 +156,7 @@ class Stacking():
                 critical_density_2 = 1/(sigma_c**2.)
 
                 et = cl.galcat['et'][galist]
+                
                 ex = cl.galcat['ex'][galist]
 
                 if self.is_deltasigma == True : signalt, signalx = et, ex
@@ -152,6 +164,7 @@ class Stacking():
                 else : signalt, signalx = et/sigma_c, ex/sigma_c
 
                 self.signal_t[i].extend(signalt)
+                
                 self.signal_x[i].extend(signalx)
 
                 if self.is_deltasigma == False : self.weight[i].extend([1 for i in range(len(galist))])
@@ -196,9 +209,11 @@ class Stacking():
                 if self.is_deltasigma == False : et, ex = cl.galcat['et'][galist]/sigma_c, cl.galcat['ex'][galist]/sigma_c
 
                 gt_individual.append(np.nansum(et*weight)/np.nansum(weight))
+                
                 gx_individual.append(np.nansum(ex*weight)/np.nansum(weight))
             
         self.LS_t_list.append(gt_individual)
+        
         self.LS_x_list.append(gx_individual)
             
 
@@ -207,14 +222,17 @@ class Stacking():
         self.z_average = np.mean(self.z_cluster_list)
         
         gt_stack = []
+        
         gx_stack = []
         
         for i in range(self.n_bins):
             
             gt = np.nansum(np.array(self.signal_t[i])*np.array(self.weight[i]))/np.nansum(np.array(self.weight[i]))
+            
             gx = np.nansum(np.array(self.signal_x[i])*np.array(self.weight[i]))/np.nansum(np.array(self.weight[i]))
             
             gt_stack.append(gt)
+            
             gx_stack.append(gx)
             
             
@@ -235,6 +253,7 @@ class Stacking():
         """
 
         Stat_t = Statistics(self.n_bins)
+        
         Stat_x = Statistics(self.n_bins)
         
         for i in range(len(self.LS_t_list)):
