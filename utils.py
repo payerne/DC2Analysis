@@ -133,7 +133,7 @@ def e1_e2(chi1, chi2):
     
     return epsilon.real, epsilon.imag
 
-def epsilon_variance_epsilon(chi1, chi2, variance_chi):
+def variance_epsilon(chi1, chi2, variance_chi):
 
     e1, e2 = e1_e2(chi1, chi2)
     
@@ -144,6 +144,74 @@ def epsilon_variance_epsilon(chi1, chi2, variance_chi):
     depsilon_dchi = epsilon * ( 1./chi + epsilon /( ( 1. - chi ** 1. ) ** 0.5 ) )
     
     return ( depsilon_dchi ** 2 ) * variance_chi
+
+
+def _is_complete(cl, r_limit, cosmo):
+    
+    n_empty_cells_limit = 5
+    
+    r"""
+    
+    This functions tests completness of cl for weak lensing analysis
+    
+    Attributes:
+    ----------
+    
+    cl : GalaxyCluster object from CLMM
+        galaxy cluster metadata containing ra, dec for each background galaxy
+    r_limit : float
+        upper limit for radial distance from the cluster center
+        
+    Returns:
+    -------
+    
+    True, False : Boolean
+        True if the cl catalog is complete (the number of empty cells <= n_empty_cells_limit)
+        False if the cl catalog is not complete (the number of empty cells >= n_empty_cells_limit)
+    
+    """
+    
+    rmax = r_limit
+    
+    rmax, dist = r_limit, cosmo.eval_da(cl.z)
+    
+    d_ra, d_dec = (cl.galcat['ra'] - cl.ra), (cl.galcat['dec'] - cl.dec)
+    
+    phi = np.arctan2(d_dec,d_ra)
+    
+    angle = np.sqrt(d_ra ** 2 + d_dec ** 2) * np.pi/180 # in radians
+    
+    x_center = dist * angle * np.cos(phi) #in Mpc
+    
+    y_center = dist * angle * np.sin(phi) #in Mpc
+    
+    n_x = 5
+    
+    n, width = n_x**2, 2*rmax
+    
+    path = width/n_x
+    
+    X0 = path * np.array([i for i in range(n_x)]) - width/2
+
+    Y0 = path * np.array([i for i in range(n_x)]) - width/2
+    
+    cut = np.zeros((int(n_x),int(n_x)))
+    
+    for i, x0 in enumerate(X0):
+
+        for j, y0 in enumerate(Y0):
+            
+            mask_x = (x_center > x0)  * (x_center <= x0 + path)
+            
+            mask_y = (y_center > y0)  * (y_center <=  y0 + path)
+        
+            mask = mask_x * mask_y
+            
+            cut[i][j] = len(x_center[mask])
+            
+    is_empty = (cut.flatten() <= n_empty_cells_limit)
+            
+    return len(cut.flatten()[is_empty]) <= n_empty_cells_limit
     
     
 

@@ -9,6 +9,8 @@ import numpy as np
 from astropy.table import Table
 import clmm.modeling as modeling
 from scipy.integrate import quad
+from astropy import units as u
+from astropy import constants as const
 
 def Duffy_concentration(m, z_cl, massdef):
     
@@ -190,3 +192,27 @@ def predict_shear_z_distrib(r, logm, c, cluster_z, z_gal, moo):
     return np.array(signal)
     
 """
+
+def critical_surface_density(z_l, z_s, cosmo):
+
+    d_l = cosmo.eval_da_z1z2(0, z_l)
+    
+    G = const.G.to(u.Mpc**3 / (u.Msun * u.year**2))
+
+    c = const.c.to(u.Mpc / u.year)
+
+    second_term = (c**2/(np.pi*4*G)).value
+    
+    sigma_c = []
+    
+    for z in z_s :
+    
+        d_s = cosmo.eval_da_z1z2(0, z)
+
+        d_ls = cosmo.eval_da_z1z2(z_l, z)
+
+        first_term = d_s/(d_ls * d_s)
+        
+        sigma_c.append(first_term * second_term)
+
+    return np.array(sigma_c)

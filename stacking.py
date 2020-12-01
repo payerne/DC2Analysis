@@ -19,6 +19,7 @@ from clmm import Cosmology
 sys.path.append('/pbs/throng/lsst/users/cpayerne/GitForThesis/DC2Analysis')
 
 from statistics_ import Statistics
+import modeling
 
 class Stacking():
     
@@ -68,6 +69,8 @@ class Stacking():
         
         self.z_galaxy = [[] for i in range(n_bins)]
         
+        self.n_galaxy_per_bin = np.zeros(n_bins)
+        
         self.r_low = r_low
         
         self.r_up = r_up
@@ -81,6 +84,8 @@ class Stacking():
         self.is_deltasigma = None
         
         self.profile = None
+        
+        self.sigma_SN = 0.3
         
     def _select_type(self, is_deltasigma = True):
         
@@ -111,6 +116,58 @@ class Stacking():
         
         self.z_cluster_list.append(cl.z)
         
+    def _add_signal_columns_to(self, cl):
+        
+        et = cl.galcat['et']
+
+        ex = cl.galcat['ex']
+
+        if self.is_deltasigma == True : signalt, signalx = et, ex
+
+        else : signalt, signalx = et/sigma_c, ex/sigma_c
+        
+        cl.galcat['signalt'], cl.galcat['signalx'] = signalt, signalx
+        
+    def _add_weights_column_to(self, cl):
+        
+        r"""
+        Assign the corresponding weight to each galaxies
+        
+        """
+        
+        n_gal = len(cl.galcat['id'])
+        
+        try:  
+            
+            store = cl.galcat['pzbins']
+            
+            cl.galcat['sigma_c_pdf'] = modeling.critical_surface_density(cl.z,cl.galcat['pzbins'], self.cosmo) 
+
+            dz = np.array([ np.array([pzbins[j + 1] - pzbins[j] for j in range(len(pzbins) - 1)])  for i, pzbins in enumerate(cl.galcat['pzbins'])])
+
+            pdf = np.array([np.array(list(pdf).pop()) for i, pdf in enumerate(cl.galcat['pzpdf'])])
+
+            norm_pdf = np.array([np.sum(pdf_*dz[i])  for i, pdf_ in enumerate(pdf)])
+
+            critical_density_2 = np.array([np.sum(list(sigma_c**(-2.)).pop()*pdf[i]*dz[i]/norm_pdf[i])  for i, sigma_c in enumerate(cl.galcat['sigma_c_pdf'])])
+            
+        except:
+        
+            sigma_c = cl.galcat['sigma_c']
+            
+            critical_density_2 = 1./( sigma_c ** 2.)
+            
+        try: sigma_epsilon = cl.galcat['rms_ellipticity']
+
+        except: sigma_epsilon = np.zeros(n_gal) 
+        
+        weight_epsilon = 1./(self.sigma_SN ** 2 + sigma_epsilon ** 2)
+
+        if self.is_deltasigma == True : w_ls = critical_density_2 * weight_epsilon
+            
+        else : w_ls = weight_epsilon * 1.
+        
+        cl.galcat['w_ls'] = 1.e14 * w_ls
         
     def _add_background_galaxies(self, cl, profile):
         
@@ -129,6 +186,16 @@ class Stacking():
         Add +1 to self.n_stacked_cluster
         """
         
+        self._add_weights_column_to(cl)
+        
+        self._add_signal_columns_to(cl)
+        
+        cl.galcat['id'] = np.arange(len(cl.galcat['z']))
+        
+        w_ls = cl.galcat['w_ls']
+        
+        signalt, signalx = cl.galcat['signalt'], cl.galcat['signalx']
+        
         self.n_stacked_cluster += 1
         
         for i, R in enumerate(profile['radius']):
@@ -136,6 +203,8 @@ class Stacking():
             galist = np.array(profile['gal_id'][i])
             
             galist.astype(int)
+            
+            self.n_galaxy_per_bin[i] += int(len(galist))
             
             if len(galist) == 0:
                 
@@ -149,38 +218,27 @@ class Stacking():
                 
                 continue
                 
-            else:
-            
-                sigma_c = cl.galcat['sigma_c'][galist]
+            self.signal_t[i].extend(signalt[galist])
 
-                critical_density_2 = 1/(sigma_c**2.)
+            self.signal_x[i].extend(signalx[galist])
 
-                et = cl.galcat['et'][galist]
-                
-                ex = cl.galcat['ex'][galist]
+            self.weight[i].extend(w_ls[galist])
 
-                if self.is_deltasigma == True : signalt, signalx = et, ex
+            self.z_galaxy[i].extend(cl.galcat['z'][galist])
 
-                else : signalt, signalx = et/sigma_c, ex/sigma_c
-
-                self.signal_t[i].extend(signalt)
-                
-                self.signal_x[i].extend(signalx)
-
-                if self.is_deltasigma == False : self.weight[i].extend([1 for i in range(len(galist))])
-
-                else : self.weight[i].extend(critical_density_2)
-
-                self.z_galaxy[i].extend(cl.galcat['z'][galist])
-                
-                self.radial_axis[i].append(R)
-            
-            
+            self.radial_axis[i].append(R)
+        
     def _estimate_individual_lensing_signal(self, cl, profile):
 
         gt_individual = []
         
         gx_individual = []
+        
+        cl.galcat['id'] = np.arange(len(cl.galcat['z']))
+        
+        w_ls = cl.galcat['w_ls']
+        
+        signalt, signalx = cl.galcat['signalt'], cl.galcat['signalx']
         
         for i, R in enumerate(profile['radius']):
             
@@ -196,21 +254,15 @@ class Stacking():
                 
                 continue
                 
-            else :
-            
-                sigma_c = cl.galcat['sigma_c'][galist]
+            et = signalt[galist]
 
-                if self.is_deltasigma == False : weight = [1 for i in range(len(galist))]
+            ex = signalx[galist]
 
-                else: weight = (sigma_c)**(-2)
-
-                et, ex = cl.galcat['et'][galist], cl.galcat['ex'][galist]
-
-                if self.is_deltasigma == False : et, ex = cl.galcat['et'][galist]/sigma_c, cl.galcat['ex'][galist]/sigma_c
-
-                gt_individual.append(np.nansum(et*weight)/np.nansum(weight))
+            weight = w_ls[galist]
+           
+            gt_individual.append(np.nansum(et*weight)/np.nansum(weight))
                 
-                gx_individual.append(np.nansum(ex*weight)/np.nansum(weight))
+            gx_individual.append(np.nansum(ex*weight)/np.nansum(weight))
             
         self.LS_t_list.append(gt_individual)
         
@@ -221,9 +273,7 @@ class Stacking():
         
         self.z_average = np.mean(self.z_cluster_list)
         
-        gt_stack = []
-        
-        gx_stack = []
+        gt_stack, gx_stack  = [], []
         
         for i in range(self.n_bins):
             
@@ -231,20 +281,17 @@ class Stacking():
             
             gx = np.nansum(np.array(self.signal_x[i])*np.array(self.weight[i]))/np.nansum(np.array(self.weight[i]))
             
-            gt_stack.append(gt)
+            gt_stack.append(gt), gx_stack.append(gx)
             
-            gx_stack.append(gx)
-            
-            
-        profile = Table()
+        self.profile = Table()
         
-        profile['gt'] = gt_stack
+        self.profile['radius'] = np.nanmean(self.radial_axis, axis = 1)
         
-        profile['gx'] = gx_stack
+        self.profile['gt'] = gt_stack
         
-        profile['radius'] = np.nanmean(self.radial_axis, axis = 1)
-            
-        self.profile = profile
+        self.profile['gx'] = gx_stack
+        
+        self.profile['n_gal'] = self.n_galaxy_per_bin
         
     def _add_standard_deviation(self):
         
@@ -274,14 +321,8 @@ class Stacking():
         Reshape self.profile excluding 1 halo stack
         """
         
-        profile_reshape = Table()
+        mask = np.isnan(self.profile['gt_err'])
         
-        mask = np.invert(np.isnan(np.array(self.profile['gt_err']).astype(float)))
+        index_nan = np.arange(self.n_bins)[mask]
         
-        profile_reshape['gt'], profile_reshape['gx'] = self.profile['gt'][mask], self.profile['gx'][mask]
-        
-        profile_reshape['radius'] = self.profile['radius'][mask]
-        
-        profile_reshape['gt_err'], profile_reshape['gx_err'] = self.profile['gt_err'][mask], self.profile['gx_err'][mask]
-        
-        self.profile = profile_reshape
+        self.profile.remove_rows(index_nan)
