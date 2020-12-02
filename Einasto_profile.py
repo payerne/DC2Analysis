@@ -82,7 +82,6 @@ class Modeling():
         ----------
         r3d : float
             the distance from the cluster center in Mpc
-
         Returns:
         -------
         rho : float
