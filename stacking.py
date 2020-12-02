@@ -118,6 +118,16 @@ class Stacking():
         
     def _add_signal_columns_to(self, cl):
         
+        r"""
+        Attributes:
+        ----------
+        cl : GalaxyCluster catalog
+            object that contains the cluster metadata
+        Returns:
+        -------
+        Add two colums for tangential 'signalt' and cross 'signalx' in cl object
+        """
+        
         et = cl.galcat['et']
 
         ex = cl.galcat['ex']
@@ -131,25 +141,41 @@ class Stacking():
     def _add_weights_column_to(self, cl):
         
         r"""
-        Assign the corresponding weight to each galaxies
-        
+        Attributes:
+        ----------
+        cl : GalaxyCluster catalog
+            object that contains the cluster metadata
+        Returns:
+        -------
+        Assign each galaxies in cl object with weight w_ls for stacking analysis
         """
         
         n_gal = len(cl.galcat['id'])
         
         try:  
             
-            store = cl.galcat['pzbins']
-            
-            cl.galcat['sigma_c_pdf'] = modeling.critical_surface_density(cl.z,cl.galcat['pzbins'], self.cosmo) 
+            mask_redshift = np.array([pzbins_ > cl.z for i, pzbins_ in enumerate(cl.galcat['pzbins'])])
 
-            dz = np.array([ np.array([pzbins[j + 1] - pzbins[j] for j in range(len(pzbins) - 1)])  for i, pzbins in enumerate(cl.galcat['pzbins'])])
+            mask_last_item = np.array([ (pzbins_ != pzbins_[-1]) for i, pzbins_ in enumerate(cl.galcat['pzbins'])])
 
-            pdf = np.array([np.array(list(pdf).pop()) for i, pdf in enumerate(cl.galcat['pzpdf'])])
+            mask = mask_redshift * mask_last_item
+
+            pzbins = np.array([pzbins_[mask[i]] for i, pzbins_ in enumerate(cl.galcat['pzbins'])])
+
+            pzbins_le = np.array([pzbins_[mask_redshift[i]] for i, pzbins_ in enumerate(cl.galcat['pzbins'])])
+
+            dz = np.array([np.array(pzbins_[1:len(pzbins_):1] - pzbins_[0:len(pzbins_) - 1:1])  for i, pzbins_ in enumerate(pzbins_le)]) 
+
+            pdf = np.array([pzpdf_[mask[i]] for i, pzpdf_ in enumerate(cl.galcat['pzpdf'])])
+
+            cl.galcat['sigma_c_pdf'] = modeling.critical_surface_density(cl.z, pzbins ,self.cosmo)
 
             norm_pdf = np.array([np.sum(pdf_*dz[i])  for i, pdf_ in enumerate(pdf)])
 
-            critical_density_2 = np.array([np.sum(list(sigma_c**(-2.)).pop()*pdf[i]*dz[i]/norm_pdf[i])  for i, sigma_c in enumerate(cl.galcat['sigma_c_pdf'])])
+            critical_density_2 = np.array([np.sum(sigma_c**(-2.)*pdf[i]*dz[i]/norm_pdf[i]) \
+                                           for i, sigma_c in enumerate(cl.galcat['sigma_c_pdf'])])
+
+
             
         except:
         
