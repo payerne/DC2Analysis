@@ -1,11 +1,25 @@
-import NFW_profile as nfw
+import sys
+sys.path.append('/pbs/throng/lsst/users/cpayerne/GitForThesis/DC2Analysis/modeling')
 import Einasto_profile as ein
+import NFW_profile as nfw
 from astropy.cosmology import FlatLambdaCDM
 from scipy.optimize import fsolve
 import numpy as np
 import pyccl as ccl
 import astropy.units as u
 from scipy.special import gamma, gammainc
+
+import sys
+import os
+os.environ['CLMM_MODELING_BACKEND'] = 'ccl' # here you may choose ccl or nc (NumCosmo)
+sys.path.append('/pbs/throng/lsst/users/cpayerne/CLMM/examples/support')
+try: import clmm
+except:
+    import notebook_install
+    notebook_install.install_clmm_pipeline(upgrade=False)
+    import clmm
+    
+from clmm.utils import compute_lensed_ellipticity
 
 def M200m_to_M200c_nfw(M200m, c200m, z, cosmo_astropy):
     
@@ -146,6 +160,28 @@ def variance_epsilon(chi1, chi2, variance_chi):
     return ( depsilon_dchi ** 2 ) * variance_chi
 
 
+def add_shapenoise(cl_stack):
+    
+    r"""
+    Use before .compte_tangential_...
+    """
+    
+    es1, es2 = cl_stack.galcat['e1_true'], cl_stack.galcat['e2_true']
+    
+    gamma1, gamma2 = cl_stack.galcat['shear1'], cl_stack.galcat['shear2']
+
+    kappa = cl_stack.galcat['kappa']
+                
+    e1_m = calc_lensed_ellipticity(es1, es2, gamma1, gamma2, kappa)[0]
+    
+    e2_m = calc_lensed_ellipticity(es1, es2, gamma1, gamma2, kappa)[1]
+                
+    cl_stack.galcat['e1'] = e1_m
+    
+    cl_stack.galcat['e2'] = e2_m
+    
+    return cl_stack
+
 def _is_complete(cl, r_limit, cosmo):
     
     n_empty_cells_limit = 5
@@ -213,9 +249,27 @@ def _is_complete(cl, r_limit, cosmo):
             
     return len(cut.flatten()[is_empty]) <= n_empty_cells_limit
     
-    
-
-    
+def Mfof(cl_, alpha):
+        
+        mp = 1.6*10**9 #Msun
+        
+        rho_mean = cl_.rho_critical 
+        
+        l_limit = alpha * ( 2. * mp / ( (4*np.pi/3.) * rho_mean ) ) ** (1./3.)
+        
+        def f(r):
+            
+            mean = (3 * mp / (4 * np.pi * cl_.density(r)) )**(1./3.) * gamma(4/3)
+            
+            #mean = ( 2. * mp / ( (4*np.pi/3.) * cl_.density(r) ) ) ** (1./3.)
+            
+            return l_limit - mean
+        
+        r_fof = fsolve(func = f, x0 = 0.3)
+        
+        M_fof = cl_.M(r_fof)
+        
+        return M_fof   
     
     
         

@@ -25,6 +25,7 @@ from clmm import Cosmology
 from matplotlib import gridspec
 import matplotlib.ticker as ticker
 plt.style.use('classic')
+import glob
 
 sys.path.append('/pbs/throng/lsst/users/cpayerne/GitForThesis/DC2Analysis')
 
@@ -34,29 +35,23 @@ import utils as ut
 
 class Perform_Stacking():
     
-    def __init__(self, z_bin = [1,1], m_bin = [1,1], cosmo = 0, is_deltasigma = True):
-    
-        self.z_bin = z_bin
-        
-        self.mass_bin = m_bin
+    def __init__(self, is_deltasigma = True, cosmo = 0):
         
         self.is_deltasigma = is_deltasigma
         
         self.cosmo = cosmo
         
-    def make_binned_profile(self, r_low = 0, r_up = 1, n_bins = 0,  max_sep = 1, where_source = '1', list_source_name = file_name):
+    def _check_available_catalogs(self,bin_def = 'M_fof', z_bin = [1,1], obs_bin = [1,1], where_source = '1'):
         
-        self.r_low = r_low
+        self.z_bin = z_bin
         
-        self.r_up = r_up
+        self.bin_def = 'M_fof'
         
-        self.n_bins = n_bins
-        
-        self.max_sep = max_sep
+        self.obs_bin = obs_bin
         
         self.where_source = where_source
         
-        self.file_name = file_name
+        self.file_name = glob.glob('cluster_ID_*')
         
         index_id = np.array([int(file.rsplit('.pkl',1)[0].rsplit('_').index('ID') + 1) for file in self.file_name])
         
@@ -64,37 +59,80 @@ class Perform_Stacking():
         
         index_redshift = np.array([int(file.rsplit('.pkl',1)[0].rsplit('_').index('redshift') + 1) for file in self.file_name])
         
-        id = np.array([int(file.rsplit('.pkl',1)[0].rsplit('_')[index_id[i]]) for i, file in enumerate(self.file_name)])
+        index_richness = np.array([int(file.rsplit('.pkl',1)[0].rsplit('_').index('richness') + 1) for file in self.file_name])
+        
+        id_ = np.array([int(file.rsplit('.pkl',1)[0].rsplit('_')[index_id[i]]) for i, file in enumerate(self.file_name)])
         
         mass = np.array([float(file.rsplit('.pkl',1)[0].rsplit('_')[index_mass[i]]) for i, file in enumerate(self.file_name)])
         
         redshift = np.array([float(file.rsplit('.pkl',1)[0].rsplit('_')[index_redshift[i]]) for i, file in enumerate(self.file_name)])
         
+        richness = np.array([float(file.rsplit('.pkl',1)[0].rsplit('_')[index_richness[i]]) for i, file in enumerate(self.file_name)])
+        
         mask_z = (redshift_object > self.z_bin[0]) * (redshift_object < self.z_bin[1])
         
-        mask_m = (mass_object > self.mass_bin[0]) * (mass_object < self.mass_bin[1])
+        if self.bin_def == 'M_fof':
         
-        file_in_bin = self.file_name[mask_z * mask_m]
+            mask_obs = (mass > self.obs_bin[0]) * (mass < self.obs_bin[1])
+            
+        elif : self.bin_def == 'richness':
+                
+            mask_obs = (richness > self.obs_bin[0]) * (richness < self.obs_bin[1])
+            
+        mask_tot = [mask_z * mask_obs]
+        
+        self.file_in_bin = self.file_name[mask_tot]
+        
+        self.mass_in_bin = mass[mask_tot]
+        
+        self.z_in_bin = redshift[mask_tot]
+        
+        self.rich_in_bin = richness[mask_tot]
+        
+        if len(self.file_in_bin) < 5 : raise ValueError("Not enough catalogs for stacking")
+            
+        print(f'n = {len(self.file_in_bin)} no-fiterered available catalogs')
+        
+        
+    def make_binned_profile(self, r_low = 0, r_up = 1, n_bins = 0,  Shapenoise = True):
+        
+        self.r_low = r_low
+        
+        self.r_up = r_up
+        
+        self.n_bins = n_bins
+        
+        self.Shapenoise = Spahenoise
         
         pf_source = stack.Stacking( r_low = self.r_low,  r_up = self.r_up, n_bins = self.n_bins, cosmo = self.cosmo)
         
-        pf_object = stack.Stacking( r_low = self.r_low,  r_up = self.r_up, n_bins = self.n_bins, cosmo = self.cosmo)
-        
         pf_source._select_type(is_deltasigma = self.is_deltasigma) 
         
-        pf_object._select_type(is_deltasigma = self.is_deltasigma) 
+        mask = []
         
-        for i, file in enumerate(file_in_bin): 
+        for i, file in enumerate(self.file_in_bin): 
 
             os.chdir(self.where_source)
 
             cl_source = pickle.load(open(file,'rb'))
             
-            if (not ut._is_complete(cl_source, self.r_up, self.cosmo)) : continue
-
-            if len(cl_source.galcat['ra']) == 0: continue
+            r"""
+            check if catalog is empty or incomplete
+            """
+            
+            if (len(cl_source.galcat['id']) == 0) or (not ut._is_complete(cl_source, self.r_up, self.cosmo)): 
+                
+                mask.append(False)
+                
+                continue
+                
+            else:
+                
+                mask.append(True)
 
             cl_source.galcat['id'] = np.array([i for i in range(len(cl_source.galcat['id']))])
+            
+            if self.Shapenoise == true : cl_source = ut._add_shapenoise(cl_source)
 
             cl_source.compute_tangential_and_cross_components(geometry="flat", is_deltasigma = True, cosmo = pf_source.cosmo)
 
@@ -105,18 +143,34 @@ class Perform_Stacking():
                                              cosmo=pf_source.cosmo,include_empty_bins= True,gal_ids_in_bins=True)
             
             pf_source._add_cluster_redshift(cl_source)
+            
+            pf_source._add_background_galaxies(cl_source, profile_source)
 
             pf_source._estimate_individual_lensing_signal(cl_source, profile_source)
-
-            pf_source._add_background_galaxies(cl_source, profile_source)
+            
+        if pf_source.n_stacked_cluster < 5:
+            
+            raise ValueError("Not enough catalogs for stacking")
             
         pf_source.MakeStackedProfile()
 
         pf_source._add_standard_deviation()
 
-        self.profile_image = pf_source.profile
+        self.profile = pf_source.profile
         
-        self.covariance_image = pf_source.cov_t
+        self.covariance = pf_source.cov_t
+        
+        self.galaxy_redshift = sum(pf_source.z_gal_per_bin, [])
+        
+        self.mask_end = np.array(mask)
+    
+    def _check_average_inputs(self):
+    
+        self.mass, self.mass_rms = np.mean(self.mass_in_bins[self.mask_end]), np.std(self.mass_in_bins[self.mask_end])
+        
+        self.z, self.z_rms = np.mean(self.z_in_bins[self.mask_end]), np.std(self.z_in_bins[self.mask_end])
+        
+        self.rich, self.rich_rms = = np.mean(self.richness_in_bins[self.mask_end]), np.std(self.richness_in_bins[self.mask_end]) 
         
     def plot_profile(self):
 

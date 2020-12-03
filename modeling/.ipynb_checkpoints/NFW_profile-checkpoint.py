@@ -1,7 +1,9 @@
 import numpy as np
 from astropy import units as u
 from astropy import constants as const
+from scipy.optimize import fsolve
 import math
+from scipy.special import gamma, gammainc
 
 class Modeling():
 
@@ -86,6 +88,51 @@ class Modeling():
             rho_3d.append(self.rho_s / ((R/self.rs) * (1. + R/self.rs) ** 2))
 
         return np.array(rho_3d)
+    
+    def Mfof(self, alpha):
+        
+        mp = 2.6*10**9 #Msun
+        
+        mean_ = (3 / (4 * (np.pi * self.rho_critical*self.cosmo.Om(self.cluster_z) /mp) ))**(1./3.) * gamma(4/3)
+        
+        l_limit = alpha * mean_
+        
+        def f(r):
+            
+            mean = (3 / (4 * np.pi * self.density(r) /mp ))**(1./3.) * gamma(4/3)
+            
+            return l_limit - mean
+        
+        r_fof = fsolve(func = f, x0 = self.r200)
+        
+        M_fof = self.M(r_fof)
+        
+        return M_fof
+            
+            
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     """
     Lensing 

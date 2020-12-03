@@ -1,7 +1,9 @@
 import numpy as np
 from astropy import units as u
 from astropy import constants as const
+from scipy.optimize import fsolve
 import math
+from scipy.special import gamma, gammainc
 
 class Modeling():
 
@@ -86,6 +88,31 @@ class Modeling():
             rho_3d.append(self.rho_s / ((R/self.rs) * (1. + R/self.rs) ** 2))
 
         return np.array(rho_3d)
+            
+            
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     """
     Lensing 
