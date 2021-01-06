@@ -5,18 +5,20 @@ import math as math
 class Statistics():
     
     r"""
-    A class for statisitcal analysis of data
+    
+    A class for statisitcal analysis of data (computes mean and covariance matrices)
+    
     """
 
     def __init__(self, n_random_variable):
         
-        self.X_label = tuple(['X_' + f'{i}' for i in range(n_random_variable)])
- 
-        DataType = tuple(['f4' for i in range(n_random_variable)])
+        self.n_random_variable = n_random_variable
+        
+        DataType = tuple(['f4' for i in range(self.n_random_variable)])
+        
+        self.X_label = tuple(['X_' + f'{i}' for i in range(self.n_random_variable)])
             
         self.X = Table(names = self.X_label, dtype = DataType)
-        
-        self.n_random_variable = n_random_variable
         
         self.realization = 0
         
@@ -34,6 +36,12 @@ class Statistics():
         self.X.add_row(tuple(x_new))
         
     def mean(self):
+        
+        r"""
+        
+        computes the mean of each random variable X_i as an attribute 
+        
+        """
     
         mean = []
         
@@ -43,16 +51,17 @@ class Statistics():
     
         self.mean = np.array(mean)
         
-        
-    def covariance(self):
+    def estimate_covariance(self):
         
         r"""
         
-        returns the covariance matrix of the random variable X_i
+        computes the covariance matrix of the random variables X_i as an attribute
         
         """
         
-        cov_matrix = np.zeros((self.n_random_variable,self.n_random_variable))
+        self.X_label = self.X.colnames
+        
+        cov_matrix = np.zeros((len(self.X_label),len(self.X_label)))
         
         for i, x_label in enumerate(self.X_label) : 
             
@@ -64,18 +73,30 @@ class Statistics():
                 
                 x, y = self.X[x_label], self.X[y_label]
                 
-                mask = np.logical_not(np.isnan(x * y))
+                mux, muy = np.mean(x), np.mean(y)
                 
-                x, y = x[mask], y[mask]
-                
-                n = len(x)
-                
-                if n > 1: cov_matrix[i,j] = np.sum( (x-np.mean(x)) * (y - np.mean(y)) ) / (n - 1)
-                
-                else: cov_matrix[i,j] = math.nan
-                    
+                cov_matrix[i,j] = np.sum((x - mux) * (y - muy))
+
                 cov_matrix[j,i] = cov_matrix[i,j]
                 
-        self.covariance = cov_matrix
-
-
+        self.covariance_matrix = cov_matrix
+        
+    def estimate_correlation(self):
+        
+        cov_matrix = self.covariance_matrix
+        
+        corr_matrix = np.zeros((len(self.X_label),len(self.X_label)))
+        
+        for i, x_label in enumerate(self.X_label) : 
+            
+            for j, y_label in enumerate(self.X_label) :
+                
+                if j < i:
+                    
+                    continue
+                    
+                corr_matrix[i,j] = cov_matrix[i,j]/np.sqrt(cov_matrix[i,i]*cov_matrix[j,j])
+                
+                corr_matrix[j,i] = corr_matrix[i,j]
+                
+        self.correlation_matrix = corr_matrix

@@ -8,10 +8,6 @@ except:
     notebook_install.install_clmm_pipeline(upgrade=False)
     import clmm
 
-from astropy.cosmology import FlatLambdaCDM
-import matplotlib.pyplot as plt
-import astropy.units as u
-from scipy.optimize import curve_fit
 import numpy as np
 from astropy.table import Table
 import fnmatch
@@ -20,20 +16,21 @@ import pickle
 import clmm.polaraveraging as pa
 import clmm.galaxycluster as gc
 import clmm.modeling as modeling
-from clmm import Cosmology 
 
-from matplotlib import gridspec
-import matplotlib.ticker as ticker
-plt.style.use('classic')
 import glob
+from scipy import interpolate
 
 sys.path.append('/pbs/throng/lsst/users/cpayerne/GitForThesis/DC2Analysis')
 
-import stacking as stack
 import utils as ut
+import statistics_ as stat
 
 
 class Perform_Stacking():
+    
+    r"""
+    A class for creating stacked background galaxy catalog and deriving shear profile using stacking estimation.
+    """
     
     def __init__(self, is_deltasigma = True, cosmo = 0):
         
@@ -41,7 +38,26 @@ class Perform_Stacking():
         
         self.cosmo = cosmo
         
-    def _check_available_catalogs(self,bin_def = 'M_fof', z_bin = [1,1], obs_bin = [1,1], where_source = '1'):
+    def _check_available_catalogs(self,bin_def = 'M_fof', z_bin = [1,1], obs_bin = [1,1], where_source = '1', r_lim = 1):
+        
+        r"""
+        Attributes:
+        ----------
+        bin_def : string
+            the definition for binning the available individual background galaxy catalogs
+        z_bin : list
+            the bin in redshift [z_low, z_up]
+        obs_bin : list
+            the bin in the choosen observable 'bin_def' [obs_low, obs_up]
+        where_source : string
+            the directory of individual cluster catalogs
+        r_lim : array
+            check completeness of individual catalogs up to r_lim [Mpc]
+        Returns:
+        -------
+        the list of corresponding files for stacking
+        
+        """
         
         self.z_bin = z_bin
         
@@ -51,7 +67,9 @@ class Perform_Stacking():
         
         self.where_source = where_source
         
-        self.file_name = glob.glob('cluster_ID_*')
+        os.chdir(self.where_source)
+        
+        self.file_name = np.array(glob.glob('cluster_ID_*'))
         
         index_id = np.array([int(file.rsplit('.pkl',1)[0].rsplit('_').index('ID') + 1) for file in self.file_name])
         
@@ -69,17 +87,17 @@ class Perform_Stacking():
         
         richness = np.array([float(file.rsplit('.pkl',1)[0].rsplit('_')[index_richness[i]]) for i, file in enumerate(self.file_name)])
         
-        mask_z = (redshift_object > self.z_bin[0]) * (redshift_object < self.z_bin[1])
+        mask_z = (redshift > self.z_bin[0]) * (redshift < self.z_bin[1])
         
         if self.bin_def == 'M_fof':
         
             mask_obs = (mass > self.obs_bin[0]) * (mass < self.obs_bin[1])
             
-        elif : self.bin_def == 'richness':
+        elif self.bin_def == 'richness':
                 
             mask_obs = (richness > self.obs_bin[0]) * (richness < self.obs_bin[1])
             
-        mask_tot = [mask_z * mask_obs]
+        mask_tot = mask_z * mask_obs
         
         self.file_in_bin = self.file_name[mask_tot]
         
@@ -87,28 +105,9 @@ class Perform_Stacking():
         
         self.z_in_bin = redshift[mask_tot]
         
-        self.rich_in_bin = richness[mask_tot]
+        self.richness_in_bin = richness[mask_tot]
         
-        if len(self.file_in_bin) < 5 : raise ValueError("Not enough catalogs for stacking")
-            
-        print(f'n = {len(self.file_in_bin)} no-fiterered available catalogs')
-        
-        
-    def make_binned_profile(self, r_low = 0, r_up = 1, n_bins = 0,  Shapenoise = True):
-        
-        self.r_low = r_low
-        
-        self.r_up = r_up
-        
-        self.n_bins = n_bins
-        
-        self.Shapenoise = Spahenoise
-        
-        pf_source = stack.Stacking( r_low = self.r_low,  r_up = self.r_up, n_bins = self.n_bins, cosmo = self.cosmo)
-        
-        pf_source._select_type(is_deltasigma = self.is_deltasigma) 
-        
-        mask = []
+        self.mask_end = []
         
         for i, file in enumerate(self.file_in_bin): 
 
@@ -120,138 +119,402 @@ class Perform_Stacking():
             check if catalog is empty or incomplete
             """
             
-            if (len(cl_source.galcat['id']) == 0) or (not ut._is_complete(cl_source, self.r_up, self.cosmo)): 
+            if (len(cl_source.galcat['id']) == 0) or (not ut._is_complete(cl_source, r_lim, self.cosmo)): 
                 
-                mask.append(False)
+                self.mask_end.append(False)
                 
-                continue
+            else: self.mask_end.append(True)
                 
-            else:
-                
-                mask.append(True)
-
-            cl_source.galcat['id'] = np.array([i for i in range(len(cl_source.galcat['id']))])
-            
-            if self.Shapenoise == true : cl_source = ut._add_shapenoise(cl_source)
-
-            cl_source.compute_tangential_and_cross_components(geometry="flat", is_deltasigma = True, cosmo = pf_source.cosmo)
-
-            bin_edges = pa.make_bins( pf_source.r_low , pf_source.r_up , pf_source.n_bins , method='evenlog10width')
-
-            profile_source = cl_source.make_binned_profile("radians", "Mpc", bins=bin_edges,\
-
-                                             cosmo=pf_source.cosmo,include_empty_bins= True,gal_ids_in_bins=True)
-            
-            pf_source._add_cluster_redshift(cl_source)
-            
-            pf_source._add_background_galaxies(cl_source, profile_source)
-
-            pf_source._estimate_individual_lensing_signal(cl_source, profile_source)
-            
-        if pf_source.n_stacked_cluster < 5:
-            
-            raise ValueError("Not enough catalogs for stacking")
-            
-        pf_source.MakeStackedProfile()
-
-        pf_source._add_standard_deviation()
-
-        self.profile = pf_source.profile
+        self.file_in_bin = self.file_in_bin[self.mask_end]
         
-        self.covariance = pf_source.cov_t
-        
-        self.galaxy_redshift = sum(pf_source.z_gal_per_bin, [])
-        
-        self.mask_end = np.array(mask)
-    
+        if len(self.file_in_bin) < 5 : raise ValueError("Not enough catalogs for stacking")
+            
+        else : print(f'n = there are {len(self.file_in_bin)} available catalogs')
+            
     def _check_average_inputs(self):
+        
+        """
+        Methods:
+        -------
+        Calculates average redshift and average chosen observable and associated errors
+        """
+
+        self.mass, self.mass_rms = np.mean(self.mass_in_bin[self.mask_end]), np.std(self.mass_in_bin[self.mask_end])
+
+        self.z, self.z_rms = np.mean(self.z_in_bin[self.mask_end]), np.std(self.z_in_bin[self.mask_end])
+
+        self.rich, self.rich_rms = np.mean(self.richness_in_bin[self.mask_end]), np.std(self.richness_in_bin[self.mask_end]) 
+            
+    def make_GalaxyCluster_catalog(self):
+        
+        """
+        Make GalaxyCluster catalogs with corresponding r, phi, ra, dec, e1, e2, et, ex, z_gal, sigma_c
+        galaxy related quantities
+        
+        Returns:
+        -------
+        cl : GalaxyCluster
+            Galaxy cluster catalog stacked along all individual clusters
+        """   
+        os.chdir(self.where_source)
+        
+        self.list_cl = []
+        
+        r, phi, ra, dec, e1, e2, et, ex, z_gal, sigma_c = [], [], [], [], [], [], [], [], [], []
+        
+        cluster_z, cluster_ra, cluster_dec = [], [], []
+        
+        halo_id = []
+        
+        for i, file in enumerate(self.file_in_bin):
+
+            os.chdir(self.where_source)
+
+            cl_source = pickle.load(open(file,'rb'))
+            
+            cl_source.compute_tangential_and_cross_components(geometry = "flat",
+                                                              shape_component1 = 'shear1',
+                                                              shape_component2 = 'shear2',
+                                                              tan_component = 'et', cross_component = 'ex', 
+                                                              is_deltasigma = True, 
+                                                              cosmo = self.cosmo)
+            cl_source.galcat['halo_id'] = i
+        
+            ut._add_distance_to_center(cl_source, self.cosmo)
+            
+            halo_id.extend(cl_source.galcat['halo_id'])
+            
+            r.extend(cl_source.galcat['r'])
+            
+            phi.extend(cl_source.galcat['phi'])
+            
+            self.list_cl.append(cl_source)
+            
+            e1.extend(cl_source.galcat['e1']), e2.extend(cl_source.galcat['e2'])
+            
+            et.extend(cl_source.galcat['et']), ex.extend(cl_source.galcat['ex'])
+            
+            ra.extend(cl_source.galcat['ra']), dec.extend(cl_source.galcat['dec'])
+            
+            sigma_c.extend(cl_source.galcat['sigma_c'])
+            
+            z_gal.extend(cl_source.galcat['z'])
+            
+            cluster_z.append(cl_source.z) 
+            
+            cluster_ra.append(cl_source.ra), cluster_dec.append(cl_source.ra)
+        
+        gal_id = np.arange(len(e1))
+            
+        data = clmm.GCData([np.array(gal_id),
+                            np.array(ra), 
+                            np.array(dec),
+                            np.array(phi),
+                            np.array(r), 
+                            np.array(e1), 
+                            np.array(e2), 
+                            np.array(et), 
+                            np.array(ex),
+                            np.array(sigma_c),
+                            np.array(z_gal),
+                            np.array(halo_id)], 
+                            names = ('id', 'ra', 'dec', 'phi', 'r', 'e1', 'e2', 'et', 'ex', 'sigma_c', 'z', 'halo_id'),
+                            masked = True)
+        
+        self.cl = clmm.GalaxyCluster('Stack', np.mean(cluster_ra), np.mean(cluster_dec), np.mean(cluster_z), data)
+        
+        self.cl.n_stacked_catalogs = len(self.file_in_bin)
+        
+        self.cl.n_galaxy = len(self.cl.galcat['id'])
+        
+        return self.cl
+
+    def add_weights(self, cl):
+        
+        r"""
+        Add weights column for weak lensing analysis
+        """
+        
+        cl.galcat['w_ls'] = 1000/(cl.galcat['sigma_c']**2)
+        
+    def make_binned_profile(self, cl = 1, bin_edges = 1):
+        
+        """
+        Attributes:
+        ----------
+        cl : GalaxyCluster catalog (clmm)
+            the background galaxy cluster catalog where weights are computed, and radial distance to cluster center
+        bin_edges: array
+            edges of radial bins for making binned profile
+        Returns:
+        -------
+        profile : Astropy Table
+            table containing shear estimation information
+        """
+        
+        radial_bins = [[bin_edges[i], bin_edges[i + 1]] for i in range(len(bin_edges) - 1)]
+        
+        """stacked signal quantities"""
+                  
+        radius, signal_t, signal_x = [], [], []
+        
+        """assigned value to locate individual galaxies """
+        
+        n_gal, gal_id, r_to_center, halo_id, wls  = [], [], [], [], [] 
+        
+        """individual weak lensing quantities"""
+        
+        e_tangential, e_cross = [], []
+                  
+        for radial_bin in radial_bins:
+                  
+            mask_down, mask_up = (cl.galcat['r'] >= radial_bin[0]),  (cl.galcat['r'] < radial_bin[1])
+            
+            mask = mask_down * mask_up
+                
+            r = cl.galcat['r'][mask]
+                  
+            et = cl.galcat['et'][mask]
+                  
+            ex = cl.galcat['ex'][mask]
+            
+            w_ls = cl.galcat['w_ls'][mask]
+                  
+            radius.append(np.sum(r * w_ls)/np.sum(w_ls))
+                  
+            signal_t.append(np.sum(et * w_ls)/np.sum(w_ls))
+                  
+            signal_x.append(np.sum(ex * w_ls)/np.sum(w_ls))
+               
+            n_gal.append(len(r))
+            
+            gal_id.append(cl.galcat['id'][mask])
+            
+            halo_id.append(cl.galcat['halo_id'][mask])
+            
+            wls.append(cl.galcat['w_ls'][mask])
+            
+            r_to_center.append(cl.galcat['r'][mask])
+            
+            e_tangential.append(et)
+            
+            e_cross.append(ex)
+            
+        profile = Table()
+        
+        profile['gt'] = np.array(signal_t)
+        
+        profile['gx'] = np.array(signal_x)
+                  
+        profile['radius'] = np.array(radius)
+        
+        profile['n_gal'] = np.array(n_gal)
+        
+        profile['gal_id'] = np.array(gal_id)
+        
+        profile['halo_id'] = np.array(halo_id)
+        
+        profile['r'] = np.array(r_to_center)
+        
+        profile['w_ls'] = np.array(wls)
+        
+        profile['et'] = np.array(e_tangential)
+        
+        profile['ex'] = np.array(e_cross)
+        
+        self.profile = profile
+                       
+        return profile
     
-        self.mass, self.mass_rms = np.mean(self.mass_in_bins[self.mask_end]), np.std(self.mass_in_bins[self.mask_end])
+    def sample_covariance(self, bin_edges = 1):
         
-        self.z, self.z_rms = np.mean(self.z_in_bins[self.mask_end]), np.std(self.z_in_bins[self.mask_end])
+        """
+        Methods:
+        -------
+            compute the sample covariance matrix from individual shear measurements 
+        Attributes:
+        ----------
+        bin_edges : array
+            the edges of the radial bins [Mpc]
+        Returns:
+        -------
+        self.cov_t_sample, self.cov_x_sample : array, array
+            the covariance matrices respectively for tangential and cross stacked shear
+        """
         
-        self.rich, self.rich_rms = = np.mean(self.richness_in_bins[self.mask_end]), np.std(self.richness_in_bins[self.mask_end]) 
+        n_bins = len(self.profile['radius'])
+
+        Stat_t, Stat_x = stat.Statistics(n_bins), stat.Statistics(n_bins)
+
+        for cl_individual in self.list_cl:
+
+            self.add_weights(cl_individual)
+            
+            ut._add_distance_to_center(cl_individual, self.cosmo)
+
+            profile_ = self.make_binned_profile(cl = cl_individual, bin_edges = bin_edges)
+
+            Stat_t._add_realization(profile_['gt']), Stat_x._add_realization(profile_['gx'])
+
+        Stat_t.estimate_covariance(), Stat_x.estimate_covariance()
+
+        self.cov_t_sample = Stat_t.covariance_matrix * 1/(self.cl.n_stacked_catalogs - 1)
+
+        self.cov_x_sample = Stat_x.covariance_matrix * 1/(self.cl.n_stacked_catalogs - 1)
+
+        return self.cov_t_sample, self.cov_x_sample
+    
+    def bootstrap_resampling(self, binned_profile = 1, catalog = 1, n_boot = 1):
         
-    def plot_profile(self):
+        """
+        Method:
+        ------
+        Calculates the bootstrap covariance matrix from true shear measurements
+        Attributes:
+        ----------
+        binned_profile : Astropy Table
+            Table containing meta data and binned profile
+        catalog : GalaxyCluster catalog
+            meta data catalog
+        n_boot : int
+            the number of bootstrap resampling
+        Returns:
+        -------
+        cov_t_boot, cov_x_boot : array, array
+            the covariance matrices respectively for tangential and cross shear
+        """
+        
+        profile = binned_profile
+        
+        cl = catalog
 
-        def myyticks(x,pos):
+        Stat_t = stat.Statistics(len(profile['radius']))
 
-            if x == 0: return "$0$"
-            sign = x/abs(x)
-            coeff = (x)/10**13
+        Stat_x = stat.Statistics(len(profile['radius']))
 
-            return r"${:2.1f}$".format(coeff)
+        indexes = np.arange(cl.n_stacked_catalogs)
 
-        def myxticks(x,pos):
+        for n in range(n_boot):
 
-            if x == 0: return "$0$"
-            exponent = int(np.log10(abs(x)))
-            sign = x/abs(x)
-            coeff = (x/(10**exponent))
+            choice_halo_id = np.array(np.random.choice(indexes, cl.n_stacked_catalogs))
 
-            return r"${:2.0f}$".format(x)
+            unique_halo_id, n_repeated = np.unique(choice_halo_id, return_counts = True)
 
-        ylabelup = r'$\Delta\Sigma_+$ ' +'$[$' + r'$\times 10^{13}$ ' + r'${\rm M}$' + r'$_\odot\;$'+ r'${\rm Mpc}$'+r'$^{-2}$'r'$]$'
-        ylabeldown = r'$\Delta\Sigma_\times$ ' +'$[$' + r'$\times 10^{13}$ ' + r'${\rm M}$' + r'$_\odot\;$'+ r'${\rm Mpc}$'+r'$^{-2}$'r'$]$'
-        xlabel = r'$R\ [$' + r'${\rm Mpc}$' + r'$]$'
+            signal_t, signal_x = [], []
 
-        # Simple data to display in various forms
+            index = np.argsort(unique_halo_id)
 
-        fig = plt.figure(figsize = (10,8))
-        gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1]) 
-        ax0 = plt.subplot(gs[0])
-        ax0.tick_params(axis='both', which='major', labelsize=16)
-        ax0.set_ylabel(ylabelup, fontsize=16)
-        #ax0.set_ylabel('r'$\rm{stacked}\ \Delta\Sigma_\times$)
+            unique_id = unique_halo_id[index]
 
-        # log scale for axis Y of the first subplot
-        ax0.set_yscale("log")
-        ax0.set_xscale("log")
-        ax0.set_xlim(self.r_low, self.r_up)
-        #ax0.set_ylim(2*10**12, 1.5*10**14)
+            repetition = n_repeated[index]
 
-        line0 = ax0.errorbar(self.profile_image['radius'], self.profile_image['gt'],self.profile_image['gt_err'],
-                             fmt='s',capsize = 7 ,ecolor = 'b',elinewidth=1.2, c='b',\
-                         markeredgecolor='b',markerfacecolor='None', \
-                             markeredgewidth=1.2, markersize = 10,
-                             label=r'$\rm{cosmoDC2\_v1.1.4\_image}$')
+            f = interpolate.interp1d(unique_id, repetition)
 
-        yticks = ax0.yaxis.get_major_ticks()
-        yticks[0].label1.set_visible(False)
-        ax0.yaxis.set_major_formatter(ticker.FuncFormatter(myyticks))
-        ax0.legend(loc='best', frameon = False,
-                  numpoints = 1, fontsize = 15)
+            for i, r in enumerate(profile['radius']):
 
-        ax1 = plt.subplot(gs[1], sharex = ax0)
-        ax1.tick_params(axis='both', which='major', labelsize=16)
-        ax1.set_xlabel(xlabel, fontsize=16)
-        ax1.set_ylabel(ylabeldown, fontsize=16)
+                mask = np.isin(profile['halo_id'][i], unique_halo_id)
 
-        ax1.plot(self.profile_image['radius'], 0*self.profile_image['radius'], '--k')
-        ax1.legend(loc='best', frameon = False,
-                  numpoints = 1, fontsize = 15)
+                halo_id = np.array(profile['halo_id'][i][mask])
 
-        plt.setp(ax0.get_xticklabels(), visible=False)
-        # remove last tick label for the second subplot
+                et, ex = profile['et'][i][mask], profile['ex'][i][mask]
 
-        yticks = ax1.yaxis.get_major_ticks()
+                r = f(halo_id)
 
-        #yticks[-1].label1.set_visible(False)
+                wls = profile['w_ls'][i][mask] * r
 
-        ax1.yaxis.set_major_formatter(ticker.FuncFormatter(myyticks))
-        ax1.xaxis.set_major_formatter(ticker.FuncFormatter(myxticks))
-        #ax1.set_ylim(-1.5*10**13, 1.5*10**13)
+                signal_t.append(np.sum(et*wls)/np.sum(wls))
 
-        line0 = ax1.errorbar(self.profile_image['radius'], self.profile_image['gx'],self.profile_image['gx_err'],
-                             fmt='s',capsize = 7 ,ecolor = 'b',elinewidth=1.2, c='b',\
-                         markeredgecolor='b',markerfacecolor='None', \
-                             markeredgewidth=1.2, markersize = 10,
-                             label=r'$\rm{cosmoDC2\_v1.1.4\_image}$')
+                signal_x.append(np.sum(ex*wls)/np.sum(wls))
 
-        # remove vertical gap between subplots
-        plt.subplots_adjust(hspace=.0)
-        #os.chdir('/pbs/throng/lsst/users/cpayerne/ThesisAtCCin2p3/GalaxyClusterCatalogs')
-        #plt.savefig('DeltaSigma_Stacking_cosmodc2_dc2object.png', bbox_inches='tight', dpi=300)
-        print(1)
-        plt.show(block=True)
+            Stat_t._add_realization(signal_t), Stat_x._add_realization(signal_x)
 
+        Stat_t.estimate_covariance(), Stat_x.estimate_covariance()
+
+        cov_t_boot = Stat_t.covariance_matrix * 1/(n_boot - 1)
+
+        cov_x_boot = Stat_x.covariance_matrix * 1/(n_boot - 1)
+
+        return cov_t_boot, cov_x_boot
+    
+    def jacknife_resampling(self, binned_profile = 1, catalog = 1, n_jk = 1):
+        
+        """
+        Method:
+        ------
+        Calculates the jacknife covariance matrix from true shear measurements
+        
+        Attributes:
+        ----------
+        binned_profile : Astropy Table
+            Table containing meta data and binned profile
+        catalog : GalaxyCluster catalog
+            meta data catalog
+        n_jk : int
+            the number of jacknife resampling
+            
+        Returns:
+        -------
+        cov_t_jk, cov_x_jk : array, array
+            the covariance matrices respectively for tangential and cross shear
+        """
+    
+        profile = binned_profile
+        
+        cl = catalog
+        
+        n_bins = len(profile['radius'])
+
+        Stat_t, Stat_x = stat.Statistics(n_bins), stat.Statistics(n_bins)
+
+        indexes = np.arange(cl.n_stacked_catalogs)
+
+        indexes_cut = np.array_split(indexes, n_jk)
+
+        for i in range(n_jk):
+
+            unique_halo_id = indexes_cut[i]
+
+            signal_t, signal_x = [], []
+
+            for i, R in enumerate(profile['radius']):
+
+                mask_is_in = np.isin(profile['halo_id'][i], unique_halo_id)
+
+                mask = np.invert(mask_is_in)
+
+                halo_id = np.array(profile['halo_id'][i][mask])
+
+                et, ex = profile['et'][i][mask], profile['ex'][i][mask]
+
+                wls = profile['w_ls'][i][mask] 
+
+                signal_t.append(np.sum(et*wls)/np.sum(wls))
+
+                signal_x.append(np.sum(ex*wls)/np.sum(wls))
+
+            Stat_t._add_realization(signal_t), Stat_x._add_realization(signal_x)
+
+        Stat_t.estimate_covariance(), Stat_x.estimate_covariance()
+
+        coeff = 1
+
+        cov_t_jk = Stat_t.covariance_matrix  * ((n_jk - 1)/(n_jk)) * coeff
+
+        cov_x_jk = Stat_x.covariance_matrix  * ((n_jk - 1)/(n_jk)) * coeff
+
+        return cov_t_jk, cov_x_jk
+
+
+
+
+
+
+
+                  
+            
+                  
+        
+
+
+
+                

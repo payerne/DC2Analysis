@@ -1,19 +1,8 @@
 import sys
-sys.path.append('/pbs/throng/lsst/users/cpayerne/CLMM/examples/support')
-try: import clmm
-except:
-    import notebook_install
-    notebook_install.install_clmm_pipeline(upgrade=False)
-    import clmm
-from astropy.cosmology import FlatLambdaCDM
-import astropy.units as u
 import numpy as np
 from astropy.table import Table
 import math
 
-import clmm.polaraveraging as pa
-import clmm.utils as utils
-import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 import modeling as model
@@ -32,14 +21,6 @@ def combinatory(X):
     combinations = mesh.T.reshape(-1, dimension)
     
     Xcomb = combinations.T
-    
-    #Npoints = len(combinations[:,0])
-    
-    #Xcomb = np.zeros((int(dimension), int(Npoints)))
-    
-    #for d in range(dimension):
-        
-    #    Xcomb[d,:] = combinations[:,d]
         
     return Xcomb
 
@@ -176,9 +157,9 @@ class MCMC():
         
         for walk in self.samples: Stat._add_realization(np.array(walk))
             
-        Stat.mean(), Stat.covariance()
+        Stat.mean(), Stat.estimate_covariance()
         
-        self.mean_symmetric, self.covariance_symmetric, self.error_symmetric = Stat.mean, Stat.covariance, np.sqrt(Stat.covariance.diagonal())
+        self.mean_symmetric, self.covariance_symmetric, self.error_symmetric = Stat.mean, Stat.covariance_matrix, np.sqrt(Stat.covariance_matrix.diagonal())
         
         
     def fit_MCMC(self):

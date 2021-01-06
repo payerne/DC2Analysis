@@ -21,119 +21,19 @@ except:
     
 from clmm.utils import compute_lensed_ellipticity
 
-def M200m_to_M200c_nfw(M200m, c200m, z, cosmo_astropy):
-    
-    r"""
-    Attributes:
-    ----------
-    M200m : array
-        the mass M200m of the cluster
-    c200m : array
-        the concentration c200m associated to mass M200m of the cluster
-    z : float
-        cluster redshift
-        
-    Returns:
-    -------
-    M200c : array
-        the mass M200c of the cluster
-    c200c : array
-        the concentration c200c associated to mass M200m of the cluster
-    """
-    
-    cl_200m = nfw.Modeling(M200m, c200m, z, 'mean', cosmo_astropy)
-    
-    M200m, r200m = cl_200m.M200, cl_200m.r200
-    
-    def f(p):
-        
-        M200c, c200c = p[0], p[1]
-        
-        cl_200c = nfw.Modeling(M200c, c200c, z, 'critical', cosmo_astropy)
-        
-        r200c = cl_200c.r200
-        
-        """first term"""
-        
-        first_term = M200c - cl_200m.M(r200c)
-        
-        """second term"""
-        
-        second_term = M200m - cl_200c.M(r200m)
-        
-        return first_term, second_term
-    
-    x0 = [M200m, c200m]
-    
-    M200c, c200c = fsolve(func = f, x0 = x0)
-    
-    return M200c, c200c
-
-
-
-def M200m_to_M200c_einasto(M200m, c200m, alpha200m, z, cosmo_astropy):
-    
-    r"""
-    Attributes:
-    ----------
-    M200m : array
-        the mass M200m of the cluster
-    c200m : array
-        the concentration c200m associated to mass M200m of the cluster
-    alpha200m : float
-        the slope parameter for200m
-    z : float
-        cluster redshift
-        
-    Returns:
-    -------
-    M200c : array
-        the mass M200c of the cluster
-    c200c : array
-        the concentration c200c associated to mass M200m of the cluster
-    alpha200c : float
-        the slope parameter for 200c
-    """
-    
-    cl_200m = ein.Modeling(M200m, c200m, alpha200m, z, 'mean', cosmo_astropy)
-    
-    M200m, c200m, alpha200m = cl_200m.M200, cl_200m.concentration, cl_200m.a
-    
-    r200m = cl_200m.r200
-    
-    Mtot = cl_200m.Mtot
-        
-    def f(p): 
-        
-        logM200c, c200c, alpha200c = p[0], p[1], p[2]
-        
-        M200c = 10**logM200c
-        
-        cl_200c = ein.Modeling(M200c, c200c, alpha200c, z, 'critical', cosmo_astropy)
-        
-        r200c = cl_200c.r200
-        
-        """first_term"""
-        
-        first_term = M200m - cl_200c.M(r200m)
-        
-        """second_term"""
-        
-        second_term = Mtot - cl_200c.Mtot
-        
-        """third_term"""
-        
-        third_term =  M200c - cl_200m.M(r200c)
-        
-        return first_term, second_term, third_term
-    
-    x0 = [np.log10(M200m), c200m, alpha200m]
-    
-    logM200c, c200c, alpha200c = fsolve(f, x0)
-    
-    return 10**logM200c, c200c, alpha200c
-
 def e1_e2(chi1, chi2):
+    
+    """
+    Attributes:
+    ----------
+    chi1, chi2 : float, float
+        the two components of ellipticity (chi-definition)
+        
+    Returns:
+    -------
+    e1, e2 : float, float
+       the two components of ellipticity (epsilon-definition) 
+    """
     
     chi = chi1 + 1j * chi2
     
@@ -148,6 +48,20 @@ def e1_e2(chi1, chi2):
     return epsilon.real, epsilon.imag
 
 def variance_epsilon(chi1, chi2, variance_chi):
+    
+    """
+    Attributes:
+    ----------
+    chi1, chi2 : float, float
+        the two components of ellipticity (chi-definition)
+    variance_chi : float
+        the uncertainty on the absolute chi-ellipticity
+        
+    Returns:
+    -------
+    variance_epsilon : float
+        the uncertainty on the absolute epsilon-ellipticity
+    """
 
     e1, e2 = e1_e2(chi1, chi2)
     
@@ -159,11 +73,19 @@ def variance_epsilon(chi1, chi2, variance_chi):
     
     return ( depsilon_dchi ** 2 ) * variance_chi
 
-
-def add_shapenoise(cl_stack):
+def _add_shapenoise(cl_stack):
     
-    r"""
-    Use before .compte_tangential_...
+    
+    """
+    Attributes:
+    ----------
+    cl_stack : GalaxyCluster object (clmm)
+    
+    Methods:
+    -------
+    compute lensed ellipticity e1, e2 
+    with true ellipticity e1_true, e2_true and shear quantitites kappa, shear
+    
     """
     
     es1, es2 = cl_stack.galcat['e1_true'], cl_stack.galcat['e2_true']
@@ -172,9 +94,9 @@ def add_shapenoise(cl_stack):
 
     kappa = cl_stack.galcat['kappa']
                 
-    e1_m = calc_lensed_ellipticity(es1, es2, gamma1, gamma2, kappa)[0]
+    e1_m = compute_lensed_ellipticity(es1, es2, gamma1, gamma2, kappa)[0]
     
-    e2_m = calc_lensed_ellipticity(es1, es2, gamma1, gamma2, kappa)[1]
+    e2_m = compute_lensed_ellipticity(es1, es2, gamma1, gamma2, kappa)[1]
                 
     cl_stack.galcat['e1'] = e1_m
     
@@ -183,8 +105,6 @@ def add_shapenoise(cl_stack):
     return cl_stack
 
 def _is_complete(cl, r_limit, cosmo):
-    
-    n_empty_cells_limit = 5
     
     r"""
     
@@ -206,6 +126,7 @@ def _is_complete(cl, r_limit, cosmo):
         False if the cl catalog is not complete (the number of empty cells >= n_empty_cells_limit)
     
     """
+    n_empty_cells_limit = 5
     
     rmax = r_limit
     
@@ -249,31 +170,93 @@ def _is_complete(cl, r_limit, cosmo):
             
     return len(cut.flatten()[is_empty]) <= n_empty_cells_limit
     
-def Mfof(cl_, alpha):
-        
-        mp = 1.6*10**9 #Msun
-        
-        rho_mean = cl_.rho_critical 
-        
-        l_limit = alpha * ( 2. * mp / ( (4*np.pi/3.) * rho_mean ) ) ** (1./3.)
-        
-        def f(r):
-            
-            mean = (3 * mp / (4 * np.pi * cl_.density(r)) )**(1./3.) * gamma(4/3)
-            
-            #mean = ( 2. * mp / ( (4*np.pi/3.) * cl_.density(r) ) ) ** (1./3.)
-            
-            return l_limit - mean
-        
-        r_fof = fsolve(func = f, x0 = 0.3)
-        
-        M_fof = cl_.M(r_fof)
-        
-        return M_fof   
+
+def _add_weights(cl, is_deltasigma = True):
     
+        sigma_SN = 0.3
+        
+        r"""
+        Attributes:
+        ----------
+        cl : GalaxyCluster catalog
+            object that contains the cluster metadata
+        Returns:
+        -------
+        Assign each galaxies in cl object with weight w_ls for stacking analysis
+        """
+        
+        n_gal = len(cl.galcat['id'])
+        
+        try:  
+            
+            mask_redshift = np.array([pzbins_ > cl.z for i, pzbins_ in enumerate(cl.galcat['pzbins'])])
+
+            mask_last_item = np.array([ (pzbins_ != pzbins_[-1]) for i, pzbins_ in enumerate(cl.galcat['pzbins'])])
+
+            mask = mask_redshift * mask_last_item
+
+            pzbins = np.array([pzbins_[mask[i]] for i, pzbins_ in enumerate(cl.galcat['pzbins'])])
+
+            pzbins_le = np.array([pzbins_[mask_redshift[i]] for i, pzbins_ in enumerate(cl.galcat['pzbins'])])
+
+            dz = np.array([np.array(pzbins_[1:len(pzbins_):1] - pzbins_[0:len(pzbins_) - 1:1])  for i, pzbins_ in enumerate(pzbins_le)]) 
+
+            pdf = np.array([pzpdf_[mask[i]] for i, pzpdf_ in enumerate(cl.galcat['pzpdf'])])
+
+            cl.galcat['sigma_c_pdf'] = modeling.critical_surface_density(cl.z, pzbins ,self.cosmo)
+
+            norm_pdf = np.array([np.sum(pdf_*dz[i])  for i, pdf_ in enumerate(pdf)])
+
+            critical_density_2 = np.array([np.sum(sigma_c**(-2.)*pdf[i]*dz[i]/norm_pdf[i]) \
+                                           for i, sigma_c in enumerate(cl.galcat['sigma_c_pdf'])])
+            
+        except:
+        
+            sigma_c = cl.galcat['sigma_c']
+            
+            critical_density_2 = 1./( sigma_c ** 2.)
+            
+        try: sigma_epsilon = cl.galcat['rms_ellipticity']
+
+        except: sigma_epsilon = np.zeros(n_gal) 
+        
+        weight_epsilon = 1./(sigma_SN ** 2 + sigma_epsilon ** 2)
+
+        if is_deltasigma == True : w_ls = critical_density_2 * weight_epsilon
+            
+        else : w_ls = weight_epsilon * 1.
+        
+        cl.galcat['w_ls'] = w_ls 
+        
+
+def _add_distance_to_center(cl, cosmo):
     
-        
-        
-        
-        
-        
+    """
+    Attributes:
+    ----------
+    cl : GalaxyCluster object
+    cosmo : clmm Cosmology object
+    
+    Methods:
+    -------
+    add a column with physical distance to cluster center in Mpc
+    
+    """
+    
+    dx = cosmo.eval_da(cl.z)
+
+    d_dec = (cl.galcat['dec'] - cl.dec)
+
+    d_ra = (cl.galcat['ra'] - cl.ra)
+
+    theta = np.arctan2(d_dec,d_ra) 
+
+    deg = np.sqrt(d_ra ** 2 + d_dec ** 2) * np.pi/180 # in radians
+
+    r = dx * deg
+
+    phi = np.arctan2(d_dec,d_ra)
+
+    cl.galcat['r'] = np.array(r)
+
+    cl.galcat['phi'] = np.array(phi)

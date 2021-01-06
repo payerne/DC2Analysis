@@ -142,28 +142,25 @@ def randomize_redshift(cl):
 def bootstrap(cl):
     
     r"""
-Parameters:
-----------
-cl : GalaxyCluster object
-    .compute_tangential_and_cross_component method is not applied
+    Parameters:
+    ----------
+    cl : GalaxyCluster object
+        .compute_tangential_and_cross_component method is not applied
 
-Returns:
--------
-cl : GalaxyCluster object
-    with bootstrap sampled catalog cl
-
- """
+    Returns:
+    -------
+    cl : GalaxyCluster object
+        with bootstrap sampled catalog cl
+    """
     
-    size = len(cl.galcat['z'])
+    size = len(cl.galcat['id'])
     
     index = np.array([i for i in range(size)])
     
     index_random = np.random.choice(index, size)
     
-    cl_bootstrap = cl
+    data = cl.galcat[index_random]
     
-    for j, i in enumerate(index_random):
-        
-        cl_bootstrap.galcat[j] = cl.galcat[i]
+    cl_bootstrap = clmm.GalaxyCluster('cluster', cl.ra, cl.dec, cl.z, data)
     
     return cl_bootstrap
