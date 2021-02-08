@@ -61,7 +61,7 @@ class Perform_Stacking():
         
         self.z_bin = z_bin
         
-        self.bin_def = 'M_fof'
+        self.bin_def = bin_def
         
         self.obs_bin = obs_bin
         

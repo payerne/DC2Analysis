@@ -144,55 +144,6 @@ def predict_excess_surface_density_concentration_scatter(r, logm, cluster_z, z_g
         
     return deltasigma
 
-"""
-def predict_convergence_z_distrib(r, logm, c, cluster_z, z_gal, moo):
-    
-    m = 10.**logm 
-    
-    c = Duffy_concentration(m, cluster_z, moo)
-    
-    moo.set_mass(m) 
-    
-    moo.set_concentration(c)
-    
-    kappa = []
-    
-    for i, R in enumerate(r):
-        
-        z_list = np.array(z_gal[i])
-        
-        kp = moo.eval_convergence(R, cluster_z, z_list)
-        
-        kappa.append(np.mean(kp))
-        
-    return np.array(kappa)
-
-def predict_shear_z_distrib(r, logm, c, cluster_z, z_gal, moo):
-    
-    m = 10.**logm 
-    
-    c = Duffy_concentration(m, cluster_z, moo)
-    
-    moo.set_mass(m) 
-    
-    moo.set_concentration(c)
-    
-    signal = []
-    
-    for i, R in enumerate(r):
-        
-        z_list = np.array(z_gal[i])
-        
-        shear = moo.eval_shear(R, cluster_z, z_list)
-        
-        convergence = moo.eval_convergence (R, cluster_z, z_list)
-        
-        signal.append(np.mean(shear/(1 - convergence)))
-        
-    return np.array(signal)
-    
-"""
-
 def critical_surface_density(z_l, z_s, cosmo):
 
     d_l = cosmo.eval_da_z1z2(0, z_l)

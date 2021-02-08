@@ -70,6 +70,54 @@ def M200m_to_M200c_nfw(M200m, c200m, z, cosmo_astropy):
     
     return M200c, c200c
 
+def M200_to_M200_nfw(M200 = 1, c200 = 1, cluster_z = 1, initial = 'critical', final = 'mean', cosmo_astropy = 1):
+    
+    r"""
+    Attributes:
+    ----------
+    M200 : array
+        the mass M200 of the cluster
+    c200 : array
+        the concentration c200 associated to mass M200m of the cluster
+    z : float
+        cluster redshift
+        
+    Returns:
+    -------
+    M200 : array
+        the mass M200 of the cluster
+    c200 : array
+        the concentration c200 associated to mass M200 of the cluster
+    """
+    
+    cl_200in = nfw.Modeling(M200, c200, cluster_z, initial, cosmo_astropy)
+    
+    M200in, r200in = cl_200in.M200, cl_200in.r200
+    
+    def f(p):
+        
+        M200out, c200out = p[0], p[1]
+        
+        cl_200out = nfw.Modeling(M200out, c200out, cluster_z, final, cosmo_astropy)
+        
+        r200out = cl_200out.r200
+        
+        """first term"""
+        
+        first_term = M200in - cl_200out.M(r200in)
+        
+        """second term"""
+        
+        second_term = M200out - cl_200in.M(r200out)
+        
+        return first_term, second_term
+    
+    x0 = [M200, c200]
+    
+    M200out, c200out = fsolve(func = f, x0 = x0)
+    
+    return M200out, c200out
+
 def M200m_to_M200c_einasto(M200m, c200m, alpha200m, z, cosmo_astropy):
     
     r"""

@@ -61,7 +61,7 @@ class Perform_Stacking():
         
         self.z_bin = z_bin
         
-        self.bin_def = 'M_fof'
+        self.bin_def = bin_def
         
         self.obs_bin = obs_bin
         
@@ -271,8 +271,6 @@ class Perform_Stacking():
             mask_down, mask_up = (cl.galcat['r'] >= radial_bin[0]),  (cl.galcat['r'] < radial_bin[1])
             
             mask = mask_down * mask_up
-            
-            print(len(mask[mask == True]))
                 
             r = cl.galcat['r'][mask]
                   
