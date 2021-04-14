@@ -1,5 +1,3 @@
-import sys
-sys.path.append('/pbs/throng/lsst/users/cpayerne/GitForThesis/DC2Analysis/modeling')
 import Einasto_profile as ein
 import NFW_profile as nfw
 import Hernquist_profile as hernquist
@@ -11,16 +9,7 @@ import astropy.units as u
 from scipy.special import gamma, gammainc
 
 import sys
-import os
-os.environ['CLMM_MODELING_BACKEND'] = 'ccl' # here you may choose ccl or nc (NumCosmo)
-sys.path.append('/pbs/throng/lsst/users/cpayerne/CLMM/examples/support')
-try: import clmm
-except:
-    import notebook_install
-    notebook_install.install_clmm_pipeline(upgrade=False)
-    import clmm
-    
-from clmm.utils import compute_lensed_ellipticity
+
 
 def M200m_to_M200c_nfw(M200m, c200m, z, cosmo_astropy):
     

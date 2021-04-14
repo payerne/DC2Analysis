@@ -59,4 +59,6 @@ def predict_sigma_excess_miscentering(Sigma, R, R_Sigma, Rmis, cluster_z, kernel
     
     DeltaSigma_mis = ct.miscentering.DeltaSigma_mis_at_R(Rcomoving,Rsigma, Sigma_mis) #comoving hMsun/Mpc^2
     
-    return DeltaSigma_mis*((10**12)*h*(1 + cluster_z)**2) #comoving hMsun/Mpc^2
+    print('DS - S')
+    
+    return DeltaSigma_mis*((10**12)*h*(1 + cluster_z)**2), Sigma_mis*((10**12)*h*(1 + cluster_z)**2) #comoving hMsun/Mpc^2
