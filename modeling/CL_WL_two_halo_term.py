@@ -118,7 +118,7 @@ def s_two_halo_term_unbaised(r, cluster_z, cosmo_ccl, kk, Pk):
 
 
 
-def halo_bais(logm = 1, concentration = 1, mdef = 'matter', Delta = 200, cluster_z = 1, cosmo_ccl = 1):
+def halo_bais(logm = 1, concentration = 1, mdef = 'matter', Delta = 200, halo_def='nfw', cluster_z = 1, cosmo_ccl = 1):
     
     r"""
     Attributes:
@@ -150,17 +150,34 @@ def halo_bais(logm = 1, concentration = 1, mdef = 'matter', Delta = 200, cluster
         
     elif mdef == 'critical':
         
-        m200c = 10**logm
+        if halo_def == 'nfw':
         
-        m200m, c200m = conv.M200_to_M200_nfw(M200 = m200c, c200 = concentration, 
-                                             cluster_z = cluster_z, 
-                                             initial = 'critical', final = 'mean', 
-                                             cosmo_astropy = cosmo_astropy)
-        
-        definition = ccl.halos.massdef.MassDef(Delta, 'matter', c_m_relation=None)
+            m200c = 10**logm
 
-        halobais = ccl.halos.hbias.HaloBiasTinker10(cosmo_ccl, mass_def=definition, mass_def_strict=True)
+            m200m, c200m = conv.M200_to_M200_nfw(M200 = m200c, c200 = concentration, 
+                                                 cluster_z = cluster_z, 
+                                                 initial = 'critical', final = 'mean', 
+                                                 cosmo_astropy = cosmo_astropy)
 
-        hbais = halobais.get_halo_bias(cosmo_ccl, m200m, 1/(1+cluster_z), mdef_other = definition)
+            definition = ccl.halos.massdef.MassDef(Delta, 'matter', c_m_relation=None)
+
+            halobais = ccl.halos.hbias.HaloBiasTinker10(cosmo_ccl, mass_def=definition, mass_def_strict=True)
+
+            hbais = halobais.get_halo_bias(cosmo_ccl, m200m, 1/(1+cluster_z), mdef_other = definition)
+            
+        elif halo_def == 'einasto':
+                
+            m200c = 10**logm
+
+            m200m, c200m = conv.M200_to_M200_einasto(M200 = m200c, c200 = concentration, 
+                                                 cluster_z = cluster_z, 
+                                                 initial = 'critical', final = 'mean', 
+                                                 cosmo_astropy = cosmo_astropy)
+
+            definition = ccl.halos.massdef.MassDef(Delta, 'matter', c_m_relation=None)
+
+            halobais = ccl.halos.hbias.HaloBiasTinker10(cosmo_ccl, mass_def=definition, mass_def_strict=True)
+
+            hbais = halobais.get_halo_bias(cosmo_ccl, m200m, 1/(1+cluster_z), mdef_other = definition)
         
     return hbais

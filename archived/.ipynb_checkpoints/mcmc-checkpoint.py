@@ -5,7 +5,6 @@ import math
 
 from scipy.optimize import curve_fit
 
-import modeling as model
 import emcee
 
 sys.path.append('/pbs/throng/lsst/users/cpayerne/GitForThesis/DC2Analysis')

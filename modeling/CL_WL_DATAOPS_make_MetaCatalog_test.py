@@ -67,6 +67,8 @@ class MetaCatalog():
         """
         
         file_where_source = np.array(glob.glob(where_source + cluster_key + '*'))
+        
+        print(len(file_where_source))
 
         self.z_bin, self.obs_bin = z_bin, obs_bin
 
@@ -74,7 +76,13 @@ class MetaCatalog():
         
         self.cluster_key = cluster_key
         
+        self.cluster_name = cluster_name
+        
+        self.redshift_def = redshift_def
+        
         self.where_weights_photoz = where_weights_photoz
+        
+        self.dc2_infos = dc2_infos
 
         halo_id, redshift = dc2_infos[cluster_name], dc2_infos[redshift_def]
         
@@ -106,7 +114,7 @@ class MetaCatalog():
 
         self.obs, self.obs_rms = np.mean(self.obs_in_bin), np.std(self.obs_in_bin) 
         
-    def make_GalaxyCluster_catalog(self, z_gal_name = 'z', shape_component1_in = 'shear1', shape_component2_in = 'shear2', tan_component_out = 'et', cross_component_out = 'ex', column_to_extract = 1, rmax = 1, modify_quantity = True, quantity_modifier = 1):
+    def make_GalaxyCluster_catalog(self, z_gal_name = 'z', cluster_ra = 'ra', cluster_dec = 'dec', shape_component1_in = 'shear1', shape_component2_in = 'shear2', tan_component_out = 'et', cross_component_out = 'ex', column_to_extract = 1, rmax = 1, modify_quantity = True, quantity_modifier = 1):
         
         tan_component, cross_component = 'et', 'ex'
         
@@ -130,22 +138,30 @@ class MetaCatalog():
 
             cl_source = load(self.where_source + self.cluster_key + str(halo) + '.pkl')
             
-            if modify_quantity == True : cl_source = quantity_modifier(cl_source)
+            cl_source.ra = self.dc2_infos[self.dc2_infos[self.cluster_name] == halo][cluster_ra][0]
+            
+            cl_source.dec = self.dc2_infos[self.dc2_infos[self.cluster_name] == halo][cluster_dec][0]
+            
+            cl_source.z = self.dc2_infos[self.dc2_infos[self.cluster_name] == halo][self.redshift_def][0]
+            cl_source.galcat['sigma_c_1_TRUE'] = 1./self.cosmo.eval_sigma_crit(cl_source.z, cl_source.galcat[z_gal_name])
+            
+            if modify_quantity == True: cl_source = quantity_modifier(cl_source)
+                
+            if len(cl_source.galcat) == 0: continue
                 
             cl_source.compute_tangential_and_cross_components(geometry = "flat",
                                                               shape_component1 = shape_component1_in,
                                                               shape_component2 = shape_component2_in,
                                                               tan_component = tan_component_out, cross_component = cross_component_out, 
                                                               is_deltasigma = False)
-            
-            
+
             cl_source.galcat['z_cluster'] = cl_source.z
             
             tab_source = cl_source.galcat
             
             tab_source['r'] = cosmo.eval_da(cl_source.z)*tab_source['theta']
             
-            mask = (tab_source['r'] < rmax)*(tab_source[z_gal_name] > cl_source.z + 0.2)
+            mask = (tab_source['r'] < rmax)*(tab_source[z_gal_name] > cl_source.z + 0.1)
             
             tab_source_cut = tab_source[mask]
             
@@ -160,7 +176,7 @@ class MetaCatalog():
                     catalog[name].extend(tab_source_cut[name])
                     
                 except: a = 1
-                
+                    
         t = Table()
         
         for name in column_to_extract:
@@ -181,15 +197,15 @@ class MetaCatalog():
         
         self.dic = catalog
     
-    def compute_signal(self, sigma_c_1_in = '1', tan_out = '', cross_out = '', catalog = 1):
+    def compute_signal(self, sigma_c_1_in = '1', tan_in = '1', cross_in = '1', tan_out = '1', cross_out = '1', catalog = 1):
     
-        catalog.galcat[tan_out] = catalog.galcat[sigma_c_1_in]**(-1.)*catalog.galcat['et']
+        catalog.galcat[tan_out] = catalog.galcat[sigma_c_1_in]**(-1.)*catalog.galcat[tan_in]
         
-        catalog.galcat[cross_out] = catalog.galcat[sigma_c_1_in]**(-1.)*catalog.galcat['ex']
+        catalog.galcat[cross_out] = catalog.galcat[sigma_c_1_in]**(-1.)*catalog.galcat[cross_in]
             
         return catalog
     
-    def compute_weights(self, err_shape_in = '', sigma_c_1_in = '', weight_out = '', catalog = 1):
+    def compute_weights(self, err_shape_in = '1', sigma_c_1_in = '1', weight_out = '1', catalog = 1):
         
         if err_shape_in == None:
             

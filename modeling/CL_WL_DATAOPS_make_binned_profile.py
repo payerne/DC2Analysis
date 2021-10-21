@@ -34,11 +34,11 @@ class Shear():
         self.cosmo = cosmo
         
    
-    def make_binned_profile(self, metacatalog = 1, tan_in = 'st', cross_in = 'sx', weights = 'w_ls', tan_out = 'gt', columns_to_bin = ['1'], cross_out = 'gx', bin_edges = 1):
+    def make_binned_profile(self, metacatalog = 1, tan_in = 'st', cross_in = 'sx', weights = 'w_ls', tan_out = 'gt', cross_out = 'gx',  add_columns_to_bin = [], bin_edges = 1):
         
         cl = metacatalog
         
-        col_to_bin = {columns_to_bin[i] : [] for i in range(len(columns_to_bin))}
+        col_to_bin = {add_columns_to_bin[i] : [] for i in range(len(add_columns_to_bin))}
         
         """
         Attributes:
@@ -57,7 +57,7 @@ class Shear():
         
         """stacked signal quantities"""
                   
-        radius, s_t, s_x = [], [], []
+        radius, s_t, s_x, count = [], [], [], []
         
         """assigned value to locate individual galaxies """
         
@@ -80,14 +80,22 @@ class Shear():
             ex = cl.galcat[cross_in][mask]
             
             w_ls = cl.galcat[weights][mask]
-                  
-            radius.append(np.sum(r * w_ls)/np.sum(w_ls))
-                  
-            s_t.append(np.sum(et * w_ls)/np.sum(w_ls))
-                  
-            s_x.append(np.sum(ex * w_ls)/np.sum(w_ls))
             
-            for name in columns_to_bin:
+            n_gal = len(w_ls)
+            
+            if len(mask[mask == True]) == 0: radius.append(0), s_t.append(0), s_x.append(0), count.append(0)
+                
+            else:
+                  
+                radius.append(np.sum(r * w_ls)/np.sum(w_ls))
+
+                s_t.append(np.sum(et * w_ls)/np.sum(w_ls))
+
+                s_x.append(np.sum(ex * w_ls)/np.sum(w_ls))
+                
+                count.append(n_gal)
+            
+            for name in add_columns_to_bin:
                 
                 col_to_bin[name].append(cl.galcat[name][mask])
             
@@ -99,7 +107,9 @@ class Shear():
                   
         profile['radius'] = np.array(radius, dtype=object)
         
-        for name in columns_to_bin:
+        profile['n_gal'] = np.array(count, dtype=object)
+        
+        for name in add_columns_to_bin:
         
             profile[name] = np.array(col_to_bin[name], dtype=object)
         
@@ -108,28 +118,9 @@ class Shear():
         return profile
     
     def make_binned_average(self, profile = 1, v_in = 'st', weights = 'w_ls', v_out = 'gt'):
-        
-        """
-        Attributes:
-        ----------
-        cl : GalaxyCluster catalog (clmm)
-            the background galaxy cluster catalog where weights are computed, and radial distance to cluster center
-        bin_edges: array
-            edges of radial bins for making binned profile
-        Returns:
-        -------
-        profile : Astropy Table
-            table containing shear estimation information
-        """
-        
-        """stacked signal quantities"""
-                  
+             
         quant = []
-        
-        """assigned value to locate individual galaxies """
-        
-        """individual weak lensing quantities"""
-                      
+
         for i, r in enumerate(profile['radius']):
             
             if v_in == None:
@@ -139,14 +130,35 @@ class Shear():
             else : quantity_to_average = profile[v_in][i]
             
             w_ls = profile[weights][i]
-                  
-            quant.append(np.sum(quantity_to_average * w_ls)/np.sum(w_ls))
+            
+            if len(w_ls) == 0: quant.append(0)
+                
+            else: quant.append(np.sum(quantity_to_average * w_ls)/np.sum(w_ls))
         
         profile[v_out] = np.array(quant, dtype=object)
                        
         return profile
     
-    def calculate_binned_selection_response(self, profile = 1,  e_1 = 'e1', e_2 = 'e2', out = '1', s2n_cut = 10):
+    def make_binned_sum(self, profile = 1, v_in = 'st', v_out = 'gt'):
+            
+        quant = []
+           
+        for i, r in enumerate(profile['radius']):
+            
+            if v_in == None:
+                
+                quantity_to_average = 1. + np.zeros(len(profile['radius'][i]))
+                  
+            else : quantity_to_sum = profile[v_in][i]
+                  
+            quant.append(np.sum(quantity_to_sum))
+        
+        profile[v_out] = np.array(quant, dtype=object)
+                       
+        return profile
+    
+    
+    def calculate_binned_selection_response(self, profile = 1,  uncal_e1 = 'e1', uncal_e2 = 'e2', R_s_out = '1', s2n_cut = 10):
         
         av_RS = []
         
@@ -163,125 +175,22 @@ class Shear():
             sel_2p = sample['mcal_s2n_2p'] > s2n_cut
 
             sel_2m = sample['mcal_s2n_2m'] > s2n_cut
-
-            S_11 = (sample[e_1][sel_1p].mean() - sample[e_1][sel_1m].mean()) / delta_gamma
-            #S_12 = (tab_cut[e_1][sel_2p].mean() - tab_cut[e_1][sel_2m].mean()) / delta_gamma
-            #S_21 = (tab_cut[e_2][sel_1p].mean() - tab_cut[e_2][sel_1m].mean()) / delta_gamma
-            S_22 = (sample[e_2][sel_2p].mean() - sample[e_2][sel_2m].mean()) / delta_gamma
-
-            av_RS.append(0.5*(S_11 + S_22))
             
-        profile[out] = np.array(av_RS)
+            try:
                 
-                       
-    
-    def sample_covariance(self, metacatalog = 1, bin_edges = 1):
-        
-        """
-        Methods:
-        -------
-            compute the sample covariance matrix from individual shear measurements 
-        Attributes:
-        ----------
-        bin_edges : array
-            the edges of the radial bins [Mpc]
-        Returns:
-        -------
-        self.cov_t_sample, self.cov_x_sample : array, array
-            the covariance matrices respectively for tangential and cross stacked shear
-        """
-        
-        n_bins = len(self.profile['radius'])
+                S_11 = (sample[uncal_e1][sel_1p].mean() - sample[uncal_e1][sel_1m].mean()) / delta_gamma
+                #S_12 = (tab_cut[e_1][sel_2p].mean() - tab_cut[e_1][sel_2m].mean()) / delta_gamma
+                #S_21 = (tab_cut[e_2][sel_1p].mean() - tab_cut[e_2][sel_1m].mean()) / delta_gamma
+                S_22 = (sample[uncal_e2][sel_2p].mean() - sample[uncal_e2][sel_2m].mean()) / delta_gamma
 
-        Stat_t, Stat_x = stat.Statistics(n_bins), stat.Statistics(n_bins)
+                av_RS.append(0.5*(S_11 + S_22))
+                
+            except:
+                
+                av_RS.append(0)
+                
 
-        for cl_individual in metacatalog.list_cl:
-
-            self.add_weights(cl_individual)
-            
-            ut._add_distance_to_center(cl_individual, self.cosmo)
-
-            profile_ = self.make_binned_profile(cl = cl_individual, bin_edges = bin_edges)
-
-            Stat_t._add_realization(profile_['gt']), Stat_x._add_realization(profile_['gx'])
-
-        Stat_t.estimate_covariance(), Stat_x.estimate_covariance()
-
-        self.cov_t_sample = Stat_t.covariance_matrix * 1/(self.cl.n_stacked_catalogs - 1)
-
-        self.cov_x_sample = Stat_x.covariance_matrix * 1/(self.cl.n_stacked_catalogs - 1)
-
-        return self.cov_t_sample, self.cov_x_sample
-    
-    def bootstrap_resampling(self, binned_profile = 1, tan_in = 'st', cross_in = 'sx', weights = 'w_ls', metacatalog = 1, n_boot = 1):
-        
-        """
-        Method:
-        ------
-        Calculates the bootstrap covariance matrix from true shear measurements
-        Attributes:
-        ----------
-        binned_profile : Astropy Table
-            Table containing meta data and binned profile
-        catalog : GalaxyCluster catalog
-            meta data catalog
-        n_boot : int
-            the number of bootstrap resampling
-        Returns:
-        -------
-        cov_t_boot, cov_x_boot : array, array
-            the covariance matrices respectively for tangential and cross shear
-        """
-        
-        profile = binned_profile
-
-        Stat_t = stat.Statistics(len(profile['radius']))
-
-        Stat_x = stat.Statistics(len(profile['radius']))
-
-        indexes = np.arange(metacatalog.n_stacked_catalogs)
-
-        for n in range(n_boot):
-
-            choice_halo_id = np.array(np.random.choice(indexes, metacatalog.n_stacked_catalogs))
-   
-            unique_halo_id, n_repeated = np.unique(choice_halo_id, return_counts = True)
-
-            signal_t, signal_x = [], []
-
-            index = np.argsort(unique_halo_id)
-
-            unique_id = unique_halo_id[index]
-
-            repetition = n_repeated[index]
-
-            f = interpolate.interp1d(unique_id, repetition)
-
-            for i, r in enumerate(profile['radius']):
-
-                mask = np.isin(profile['halo_id'][i], unique_halo_id)
-
-                halo_id = np.array(profile['halo_id'][i][mask])
-
-                et, ex = profile[tan_in][i][mask], profile[cross_in][i][mask]
-
-                r = f(halo_id)
-
-                wls = profile[weights][i][mask] * r
-
-                signal_t.append(np.sum(et*wls)/np.sum(wls))
-
-                signal_x.append(np.sum(ex*wls)/np.sum(wls))
-
-            Stat_t._add_realization(signal_t), Stat_x._add_realization(signal_x)
-
-        Stat_t.estimate_covariance(), Stat_x.estimate_covariance()
-
-        cov_t_boot = Stat_t.covariance_matrix * 1/(n_boot - 1)
-
-        cov_x_boot = Stat_x.covariance_matrix * 1/(n_boot - 1)
-
-        return cov_t_boot, cov_x_boot
+        profile[R_s_out] = np.array(av_RS)
     
     def bootstrap_resampling_with_numpy(self, binned_profile = 1, tan_in = 'st', cross_in = 'sx', weights = 'w_ls', metacatalog = 1, n_boot = 1):
         
@@ -363,7 +272,7 @@ class Shear():
         
         return covt, covx
     
-    def bootstrap_resampling_with_numpy_calibration(self, binned_profile = 1, tan_in = 'st', cross_in = 'sx', weights = 'w_ls', shear_response = 'Rg', n_boot = 1, halo_id = 1):
+    def bootstrap_resampling_cluster_with_calibration(self, binned_profile = 1, tan_in = 'st', cross_in = 'sx', weights = 'w_ls', shear_response = 'Rg', n_boot = 1, halo_id = 1):
             
         halo_id_sample = halo_id
         
@@ -440,9 +349,46 @@ class Shear():
         covt, covx = np.cov(Xt), np.cov(Xx)
         
         return covt, covx, Xt, Xx
+    
+    
+    def bootstrap_resampling_galaxy(self, catalog = 1, tan_in = 'st', cross_in = 'sx', tan_out = 'gt', cross_out = 'gx', weights = 'w_ls', bin_edges = 1, n_boot = 1):
+        
+        list_st, list_sx = [], []
+        
+        names = []
+        
+        for i in range(len(bin_edges) - 1):
+            
+            names.append('x' + str(i))
+        
+        t,x = Table(names = names), Table(names = names)
+        
+        for k in range(n_boot):
                 
-            
-            
+            signal_t, signal_x = [], []
+                
+            mask = np.random.choice(np.arange(len(catalog.galcat)), len(catalog.galcat))
+                                    
+            catalog_boot = clmm.GalaxyCluster('Stack', 0, 0, 0, catalog.galcat[mask])
+                                    
+            profile_boot = self.make_binned_profile(metacatalog = catalog_boot, tan_in = tan_in, cross_in = cross_in, weights = weights, tan_out = tan_out, cross_out = cross_out, bin_edges = bin_edges)
+
+            st, sx = profile_boot[tan_out], profile_boot[cross_out]
+
+            t.add_row(np.array(st)), x.add_row(np.array(sx))
+
+        listet, listex = [], []
+
+        for n in names:
+
+            listet.append(t[n]), listex.append(x[n])
+
+        Xt, Xx = np.stack((listet), axis=0), np.stack((listex), axis=0)
+
+        covt, covx = np.cov(Xt), np.cov(Xx)
+
+        return covt, covx, Xt, Xx
+
     def jacknife_resampling(self, binned_profile = 1, catalog = 1, n_jk = 1):
         
         """
