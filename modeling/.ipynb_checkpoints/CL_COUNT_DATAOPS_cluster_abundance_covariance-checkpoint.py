@@ -72,6 +72,8 @@ class covariance_matrix():
         healpix_combination_delete = list(combinations(healpix_list_unique, N_delete))
 
         data_jack = []
+        
+        data_jack_in = []
 
         for i, hp_list_delete in enumerate(healpix_combination_delete):
 
@@ -83,7 +85,13 @@ class covariance_matrix():
                                                            proxy[mask_out_area],
                                                            bins=[z_corner, proxy_corner])
                 
+                data_in, mass_edges, z_edges = np.histogram2d(redshift[np.invert(mask_out_area)], 
+                                                           proxy[np.invert(mask_out_area)],
+                                                           bins=[z_corner, proxy_corner])
+                
                 data_jack.append(data.flatten())
+                
+                data_jack_in.append(data_in.flatten())
 
         data_jack = np.array(data_jack)
 
@@ -96,6 +104,8 @@ class covariance_matrix():
         coeff = (n_jack-N_delete)/(N_delete*n_jack)
         
         self.n_jack = n_jack
+        
+        self.data_jack = data_jack_in
 
         self.Jackknife_covariance_matrix = cov_N * coeff
         
