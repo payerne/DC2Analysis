@@ -13,10 +13,12 @@ class ClusterAbundance():
             b. cluster count with individual masses and redshifts (un-binned approach)
             c. cluster count in mass proxy and redhsift intervals (binned approach)
             d. cluster count with individual mass proxies and redshifts (un-binned approach)
-        Uses Core Cosmology Library (arXiv:1812.05995) as backend.
+        Core Cosmology Library (arXiv:1812.05995) as backend for:
+        1. comoving differential volume
+        2. halo mass function
     """
     def ___init___(self):
-        self.name = 'Likelihood for cluster count Cosmology'
+        self.name = 'Cosmological prediction for cluster abundance cosmology'
         
     def set_cosmology(self, cosmo = 1, massdef = None, hmd = None):
         r"""
@@ -188,6 +190,7 @@ class ClusterAbundance():
             list of proxy bins
         proxy_model: object
             object from class with mass-proxy relation methods
+            use of cumulative function
         Returns:
         --------
         cumulative_proxy_grid : array
@@ -200,7 +203,7 @@ class ClusterAbundance():
         for proxy_bin in Proxy_bin:
             cdf = np.zeros([len(logm_grid), len(z_grid)])
             for i, z_value in enumerate(z_grid):
-                cdf[:,i] = proxy_model.integral_in_bin(proxy_bin, z_value, logm_grid)
+                cdf[:,i] = proxy_model.cdf(proxy_bin, z_value, logm_grid)
             cdf_interp = interpolate.interp2d(z_grid, 
                                             logm_grid, 
                                             cdf, 
@@ -221,6 +224,7 @@ class ClusterAbundance():
             list of dark matter halo masses
         proxy_model: object
             object from class with mass-proxy relation methods
+            use of pdf method
         Returns:
         --------       
         pdf : array
@@ -229,7 +233,7 @@ class ClusterAbundance():
         """
         pdf = np.zeros([len(z), len(logm_grid)])
         for i, zs, proxys in zip(np.arange(len(z)), z, proxy):
-            pdf[i,:] = proxy_model.P(proxys, zs, logm_grid)
+            pdf[i,:] = proxy_model.pdf(proxys, zs, logm_grid)
         self.pdf = pdf
 
     def Cluster_Abundance_ProxyZ(self, Redshift_bin = [], Proxy_bin = [], logm_limit = [], 
@@ -289,12 +293,13 @@ class ClusterAbundance():
                 for j, z_bin in enumerate(Redshift_bin):
                     def dN_dzdproxydOmega(logm, z):
                         res1 = self.sky_area * self.dVdzdOmega(z) * self.dndlog10M(logm, z)
-                        res2 = proxy_model.integral_in_bin(proxy_bin, z, logm)
+                        res2 = proxy_model.cdf(proxy_bin, z, logm)
                         return res1 * res2
                     N_th_matrix[j,i] = scipy.integrate.dblquad(dN_dzdproxydOmega, 
                                                                z_bin[0], z_bin[1], 
                                                                lambda x: logm_limit[0], 
-                                                               lambda x: logm_limit[1])[0]
+                                                               lambda x: logm_limit[1],
+                                                               epsabs=1.49e-07)[0]
         return N_th_matrix
 
     def multiplicity_function_individual_ProxyZ(self, z = .1, proxy = 1, 
@@ -305,7 +310,7 @@ class ClusterAbundance():
         z: array
             list of redshifs
         proxy: array
-            list of dark matter halo masses
+            list of dark matter halo mass proxies
         proxy_model: object
             object from proxy class
         method: str
@@ -315,7 +320,7 @@ class ClusterAbundance():
         Returns:
         --------       
         dN_dzdlogMdOmega : array
-            multiplicity function for the corresponding redshifts and masses
+            multiplicity function for the corresponding redshifts and mass proxies
         """
         if method == 'simps':
             z_sort = np.sort(z)
@@ -330,8 +335,8 @@ class ClusterAbundance():
             dndproxy = []
             for zs, proxys in zip(z, proxy):
                 def __integrand__(logm):
-                    res1 = proxy_model.P(proxys, zs, logm)
-                    res2 = self.dndlog10M(logm, zs)*self.dVdzdOmega(zs)
+                    res1 = proxy_model.pdf(proxys, zs, logm)
+                    res2 = self.dndlog10M(logm, zs) * self.dVdzdOmega(zs)
                     return res1*res2
                 dndproxy.append(scipy.integrate.quad(__integrand__, self.logm_grid[0], self.logm_grid[-1])[0])
             return np.array(dndproxy)

@@ -74,7 +74,7 @@ class Richness():
         sigma_lambda0, A_z_sigma, A_logm_sigma = self.theta_sigma
         return sigma_lambda0 + A_z_sigma * np.log10((1+redshift)/(1 + z0)) + A_logm_sigma * (logm-np.log10(m0))
     
-    def P(self,lnLambda, redshift, logm):
+    def pdf(self,lnLambda, redshift, logm):
         r"""
         Attributes:
         -----------
@@ -93,7 +93,7 @@ class Richness():
         sigma = self.sigma_loglambda_logm_f(redshift, logm)
         return np.exp(-.5*(lnLambda-mu)**2/sigma**2)/np.sqrt(2*np.pi*sigma**2)
 
-    def integral_in_bin(self, lnlambda_bin, redshift, logm):
+    def cdf(self, lnlambda_bin, redshift, logm):
         r"""
         Attributes:
         -----------
