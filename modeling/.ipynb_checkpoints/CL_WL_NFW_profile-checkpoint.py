@@ -7,47 +7,34 @@ from scipy.special import gamma, gammainc
 
 class Modeling():
 
-    def __init__(self, M200, concentration, cluster_z, mass_def, cosmo):
+    def __init__(self, M, concentration, cluster_z, background_density, delta, cosmo):
     
-        self.mass_def = mass_def
-        
-        self.M200 = M200
-        
+        self.background_density = background_density
+        self.M = M
+        self.delta = delta
         self.concentration = concentration
-        
         self.cosmo = cosmo
-        
         self.cluster_z = cluster_z
-        
-        self.rho_critical = self.cosmo.critical_density(self.cluster_z).to(u.Msun / u.Mpc**3).value
-        
+        self.rho_critical = self.cosmo.critical_density(cluster_z).to(u.Msun / u.Mpc**3).value
         """
         alpha : float
             define the overdensity definition alpha * 200 * rho_critical : 1 if 200c , Om(z) if 200m
         """
-        
-        if self.mass_def == 'mean': self.alpha = self.cosmo.Om(self.cluster_z)
-            
-        else : self.alpha = 1.
-            
-        self.r200 = ((self.M200 * 3) / (self.alpha * 800 * np.pi * self.rho_critical)) ** (1./3.)
-        
-        self.rs = self.r200/self.concentration
-    
+        if self.background_density == 'mean': self.alpha = self.cosmo.Om(self.cluster_z)
+        elif self.background_density == 'critical': self.alpha = 1. 
+        self.rdelta = ((3*self.M) / (4*np.pi*self.delta*self.alpha* self.rho_critical)) ** (1./3.)
+        self.rs = self.rdelta / self.concentration
         """
         rho_s : float
             the density rho_s of the cluster in M_sun.Mpc^{-3} such as:
             rho(r) = rhos / (r/rs)*(1 + r/rs)**2 
         """
-        
-        self.rho_s = (self.concentration**3/self.delta_c(self.concentration)) * (200./3.) * self.alpha * self.rho_critical
+        self.rho_s = (self.delta/3.)*(self.concentration**3/self.delta_c(self.concentration)) * self.alpha * self.rho_critical
 
     def delta_c(self, c):
-
         return np.log(1 + c) - c/(1 + c)
     
-    def M(self,r3d):
-        
+    def M_in(self,r3d):
         """
         Parameters:
         ----------
@@ -58,17 +45,11 @@ class Modeling():
         M : float, array
             the mass within a sphere of radius r (M_sun)
         """
-        
-        rho_s, rs = self.rho_s, self.rs
-        
-        x = r3d/rs
-        
-        M_in_r = rho_s * (4 * np.pi * rs ** 3) * self.delta_c(x) 
-        
+        x = r3d/self.rs
+        M_in_r = self.M * self.delta_c(x) / self.delta_c(self.concentration)
         return M_in_r
     
     def density(self,r3d):
-
         """
         Parameters:
         ----------
@@ -80,34 +61,10 @@ class Modeling():
         rho : float
             the radial dark matter density of the cluster in M_sun.Mpc^{-3} at radius r
         """
-
         rho_3d = []
-
         for R in r3d:
-
             rho_3d.append(self.rho_s / ((R/self.rs) * (1. + R/self.rs) ** 2))
-
         return np.array(rho_3d)
-    
-    def Mfof(self, alpha):
-        
-        mp = 2.6*10**9 #Msun
-        
-        mean_ = (3 / (4 * (np.pi * self.rho_critical*self.cosmo.Om(self.cluster_z) /mp) ))**(1./3.) * gamma(4/3)
-        
-        l_limit = alpha * mean_
-        
-        def f(r):
-            
-            mean = (3 / (4 * np.pi * self.density(r) /mp ))**(1./3.) * gamma(4/3)
-            
-            return l_limit - mean
-        
-        r_fof = fsolve(func = f, x0 = self.r200)
-        
-        M_fof = self.M(r_fof)
-        
-        return M_fof
             
             
         
@@ -134,10 +91,7 @@ class Modeling():
     
     
     
-    """
-    Lensing 
-    """
-    
+    r"""
 
     def kappa_u(self,x):
 
@@ -296,7 +250,7 @@ class Modeling():
         return np.array(y)            
     
     
-
+    """
 
         
 

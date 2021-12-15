@@ -14,11 +14,10 @@ from itertools import combinations, chain
 def binning(corner): return [[corner[i],corner[i+1]] for i in range(len(corner)-1)]
 class Likelihood():
     r"""
-        2. compute likelihood :
+        compute likelihood :
             a. for the binned gaussian case
             b. for the binned poissonian case
             c. for the un-binned poissonian case
-        Uses Core Cosmology Library (arXiv:1812.05995) as backend.
     """
     def ___init___(self):
         self.name = 'Likelihood for cluster count Cosmology'
