@@ -20,24 +20,55 @@ class MVP():
     
     def Gaussian(self, x, mu, var_SSC):
         r"""
-        Gaussian
+        Attributes:
+        -----------
+        x: array
+            variable along the x axis
+        mu: float
+            mean of the Gaussian distribution
+        var_SSC: float
+            variance of the Gaussian distrubution
+        Returns:
+        --------
+        g: array
+            Gausian probability density function
         """
-        #return multivariate_normal.pdf(x, mean=mu, cov=var_SSC)
         return np.exp(-.5*(x-mu)**2/var_SSC)/np.sqrt(2*np.pi*var_SSC)
         
     def poissonian(self, n, mu):
         r"""
-        Poissonian
+        Attributes:
+        -----------
+        n: array
+            variable along the n axis
+        mu: float
+            mean of the Poisson distribution
+        Returns:
+        --------
+        p: array
+            Poisson probability function
         """
         rv = poisson(mu)
         return rv.pmf(n)
         
     def __integrand__(self, x, n, mu, var_SSC):
         r"""
-        MVP
+        Attributes:
+        -----------
+        x: array
+            variable along the integrand axis
+        n: int
+            observed cluster count
+        mu: float
+            cosmological prediction for cluster count
+        var_SSC: float
+            variance of the gaussian
+        Returns:
+        --------
+        integrand: array
         """
         return self.poissonian(n, x) * self.Gaussian(x, mu, var_SSC)
-        
+    
     def p_mvp_delta(self, N_array, mu, var_SSC):
         r"""
         Attributes:
@@ -61,7 +92,6 @@ class MVP():
         up = mu + self.n_sigma_delta*np.sqrt(var_SSC)
         down = mu - self.n_sigma_delta*np.sqrt(var_SSC)
         u_axis = self.array*(up - down) + down
-        #u_axis[-1], u_axis[0] = up, down
         p_mvp = np.zeros([len(N_array), len(self.array)])
         def _integrand_(n, u_axis):
             return self.__integrand__(u_axis, n, mu, var_SSC)
@@ -69,12 +99,6 @@ class MVP():
         res = _integrand_(N_mesh, u_mesh)
         res = np.where(u_mesh >= 0, res, 0)
         return res.T/K
-        #works well
-        #for i, n in enumerate(N_array):
-        #    res = self.__integrand__(u_axis, n, mu, var_SSC)
-        #    res = np.where(u_axis >= 0, res, 0)
-        #    p_mvp[i,:] = res
-        #return p_mvp/K
     
     def _set_axis(self, n_sigma_N, mu_list, var_SSC_list):
         r"""
@@ -114,8 +138,16 @@ class MVP():
         r"""
         Attributes:
         -----------
+        mu_list: array
+            list of cosmological prediction
+        var_SSC_list: array
+            list of variance
         Returns:
         --------
+        N: array
+            list of count axis
+        P_MVP: array
+            list of MVP probability distribution
         r"""
         _integrand_ = np.zeros([self.len_n_array, len(self.array)])
         l = self.array[-1] - self.array[0]
@@ -129,6 +161,60 @@ class MVP():
         P_MVP = np.array([P_MVP_table[indexes] for indexes in self.split_indexes])
         return self.N_array_list, P_MVP
     
+    def p_mvp_delta_obs(self, N_obs, mu, var_SSC):
+        r"""
+        Attributes:
+        -----------
+        N_array: array
+            cluster count axis (int values)
+        mu: float
+            cluster abuncance cosmological prediction
+        var_SSC: folat
+            SSC variance of cluster count
+        Returns:
+        --------
+        p_mvp: array
+            Gaussian/Poisson mixture probability along the overdensity axis
+        r"""
+        K1 = (1./np.sqrt(2.*np.pi*var_SSC))
+        K2 = np.sqrt(1./var_SSC)
+        K3 = np.sqrt(np.pi/2.)
+        K4 = mu*K2/np.sqrt(2.)
+        K = 1 - (K3*erfc(K4)/K2)*K1
+        up = mu + self.n_sigma_delta*np.sqrt(var_SSC)
+        down = mu - self.n_sigma_delta*np.sqrt(var_SSC)
+        u_axis = self.array*(up - down) + down
+        p_mvp = np.zeros( len(self.array) )
+        def _integrand_(u_axis):
+            return self.__integrand__(u_axis, N_obs, mu, var_SSC)
+        res = _integrand_(u_axis)
+        res = np.where(u_axis >= 0, res, 0)
+        return res.T/K
+    
+    def p_mvp_obs(self, N_obs_list, mu_list, var_SSC_list):
+        r"""
+        Attributes:
+        -----------
+        mu_list: array
+            list of cosmological prediction
+        var_SSC_list: array
+            list of variance
+        Returns:
+        --------
+        N: array
+            list of count axis
+        P_MVP: array
+            list of MVP probability distribution
+        r"""
+        _integrand_ = np.zeros([len(N_obs_list), len(self.array)])
+        l = self.array[-1] - self.array[0]
+        split_indexes = []
+        for i, nth in enumerate(mu_list):
+            p = self.p_mvp_delta_obs(N_obs_list[i], nth, var_SSC_list[i])
+            alpha = 2*self.n_sigma_delta*np.sqrt(var_SSC_list[i])/l #change of variable
+            _integrand_[i,:] = alpha * p
+        P_MVP_table = simps(_integrand_, self.array)
+        return P_MVP_table
     
     
     
@@ -176,6 +262,12 @@ class MVP():
     
     
     
+            #works well
+        #for i, n in enumerate(N_array):
+        #    res = self.__integrand__(u_axis, n, mu, var_SSC)
+        #    res = np.where(u_axis >= 0, res, 0)
+        #    p_mvp[i,:] = res
+        #return p_mvp/K
     
     r"""    
     def P_MVP(N_array = 1, mu = 1, var = 1, method = 'simps'):
