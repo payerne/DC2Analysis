@@ -86,10 +86,27 @@ class Likelihood():
         """
         delta = (N_obs_matrix - N_th_matrix).flatten()
         inv_covariance_matrix = np.linalg.inv((covariance_matrix))
-        lnL_Gaussian = -0.5*np.sum(delta*inv_covariance_matrix.dot(delta)) 
-        self.lnL_Binned_Gaussian = lnL_Gaussian
+        self.lnL_Binned_Gaussian = -0.5*np.sum(delta*inv_covariance_matrix.dot(delta)) 
         
-    def lnLikelihood_Binned_MPG(self, N_th_matrix, N_obs_matrix, sample_variance):
+    def lnLikelihood_Binned_MPG_delta(self, N_obs_matrix, N_th_matrix, sample_covariance):
+        r"""
+        Attributes:
+        -----------
+        N_obs_matrix:
+            observed binned cluster abundance
+        N_th_matrix: array
+            cosmological prediction for binned cluster abundance
+        sample_covarince: array
+            sample covariance matrix for binned cluster abundance
+        Returns:
+        --------
+        add attributes with total log-likelihood MPG estimator
+        """
+        x_th_samples = np.random.multivariate_normal(N_th_matrix.flatten(), sample_covariance, size = 1000)
+        res = np.log(self.poissonian(N_obs_matrix, x_th_samples))
+        self.lnL_Binned_MPG_delta = np.sum(np.mean(res, axis = 0))
+        
+    def lnLikelihood_Binned_MPG_diagonal(self, N_th_matrix, N_obs_matrix, sample_variance):
         r"""
         Attributes:
         -----------
@@ -102,25 +119,8 @@ class Likelihood():
         Returns:
         --------
         add attributes with total log-likelihood for Gaussian & Poissonian mixture binned approach
+        using the diagonal sample covariance matrix
         """
-        def GP_product(x, n, mu, var_SSC):
-            r"""
-            Attributes:
-            -----------
-            x: array
-                variable along the integrand axis
-            n: int
-                observed cluster count
-            mu: float
-                cosmological prediction for cluster count
-            var_SSC: float
-                variance of the gaussian
-            Returns:
-            --------
-            integrand: array
-            """
-            return self.poissonian(n, x) * self.Gaussian(x, mu, var_SSC)
-    
         def P_MPG_delta(N_obs, mu, var_SSC):
             r"""
             Attributes:
@@ -136,21 +136,22 @@ class Likelihood():
             p_mvp: array
                 Gaussian/Poisson mixture probability along the overdensity axis
             r"""
-            u_array = np.linspace(0, 1, 500)
-            n_sigma_delta = 3
             K1 = (1./np.sqrt(2.*np.pi*var_SSC))
             K2 = np.sqrt(1./var_SSC)
             K3 = np.sqrt(np.pi/2.)
             K4 = mu*K2/np.sqrt(2.)
+            #compute normalisation of truncated Gaussian
             K = 1 - (K3*erfc(K4)/K2)*K1
             up = mu + n_sigma_delta*np.sqrt(var_SSC)
             down = mu - n_sigma_delta*np.sqrt(var_SSC)
             u_axis = u_array*(up - down) + down
             p_mvp = np.zeros( len(u_array) )
-            res = GP_product(u_axis, N_obs, mu, var_SSC)
+            res = self.poissonian(N_obs, u_axis) * self.Gaussian(u_axis, mu, var_SSC)
             res = np.where(u_axis >= 0, res, 0)
             return res.T/K
-    
+        
+        u_array = np.linspace(0, 1, 500)
+        n_sigma_delta = 3
         _integrand_ = np.zeros([len(N_obs_matrix), len(u_array)])
         L = 1
         var_list = sample_variance
@@ -160,7 +161,7 @@ class Likelihood():
             alpha = 2*n_sigma_delta*np.sqrt(var_list[i])/L
             _integrand_[i,:] = alpha * p
         res = simps(_integrand_, u_array)
-        self.lnL_Binned_MPG = np.sum(np.log(res))
+        self.lnL_Binned_MPG_diagonal = np.sum(np.log(res))
         
     def lnLikelihood_UnBinned_Poissonian(self, dN_dzdlogMdOmega, N_tot):
         r"""
