@@ -83,57 +83,6 @@ class Forecast():
             for j in range(len(theta)):
                 Fisher_matrix[i,j] = np.sum(dd[i] * np.linalg.inv(cov).dot(dd[j]))
         return Fisher_matrix
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
 
     r"""
     def second_derivative_matrix_(self, theta, model, delta = 1e-5):

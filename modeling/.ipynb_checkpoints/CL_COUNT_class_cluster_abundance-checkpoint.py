@@ -6,8 +6,7 @@ from scipy import stats
 from scipy.integrate import quad,simps, dblquad
 from scipy import interpolate
 import sys
-sys.path.append('/pbs/throng/lsst/users/cpayerne/PySSC/')
-import PySSC
+import CL_COUNT_Sij_FLacasa
 
 class ClusterAbundance():
     r"""
@@ -218,36 +217,59 @@ class ClusterAbundance():
         return N_th_matrix
     
     def sample_covariance_MZ(self, Redshift_bin, Proxy_bin, Binned_Abundance, Binned_halo_bias):
-
-        z_arr = np.linspace(0.05,2.5,3000)
-        nbins_T   = len(Redshift_bin)
-        windows_T = np.zeros((nbins_T,len(z_arr)))
-        for i, z_bin in enumerate(Redshift_bin):
-            Dz = z_bin[1]-z_bin[0]
-            z_arr_cut = z_arr[(z_arr > z_bin[0])*(z_arr < z_bin[1])]
-            for k, z in enumerate(z_arr):
-                if ((z>z_bin[0]) and (z<=z_bin[1])):
-                    windows_T[i,k] = 1/Dz  
-        Sij = PySSC.Sij(z_arr,windows_T)
-        LogM, Z = np.meshgrid(np.mean(Proxy_bin, axis = 1), np.mean(Redshift_bin, axis = 1))
+        r"""
+        returns the sample covariance matrix for cluster count
+        Attributes:
+        -----------
+         Redshift_bin : list of lists
+            list of redshift bins
+        Proxy_bin : list of lists
+            list of mass bins
+        Binned_Abundance: array
+            predicted abundance
+        Binned_halo_bias: array
+            predicted binned halo bias
+        Returns:
+        --------
+        sample_covariance: array
+            sample covariance for cluster abundance
+            #uses the calculation of the fluctuation apmplitude Sij from F. Lacasa https://github.com/fabienlacasa/PySSC
+        """
+        #use FLacasa code
+        Sij = CL_COUNT_Sij_FLacasa.Sij_FLacasa(Redshift_bin)
         index_LogM, index_Z =  np.meshgrid(np.arange(len(Proxy_bin)), np.arange(len(Redshift_bin)))
+        index_Z_flatten = index_Z.flatten()
         len_mat = len(Redshift_bin) * len(Proxy_bin)
         cov_SSC = np.zeros([len_mat, len_mat])
-        hb = Binned_halo_bias.flatten()
-        for i, Ni in enumerate(Binned_Abundance.flatten()):
-            index_z_i = index_Z.flatten()[i]
-            index_logm_i = index_LogM.flatten()[i]
-            logm_mean_i = np.mean([LogM.flatten()[index_logm_i], LogM.flatten()[index_logm_i + 1]])
-            z_mean_i = np.mean([Z.flatten()[index_z_i], Z.flatten()[index_z_i + 1]])
-            for j, Nj in enumerate(Binned_Abundance.flatten()):
-                index_z_j = index_Z.flatten()[j]
-                index_logm_j = index_LogM.flatten()[j]
-                logm_mean_j = np.mean([LogM.flatten()[index_logm_j], LogM.flatten()[index_logm_j + 1]])
-                z_mean_j = np.mean([Z.flatten()[index_z_j], Z.flatten()[index_z_j + 1]])
-                hbi = hb[i]
-                hbj = hb[j]
-                cov_SSC[i,j] = hbi * hbj * Ni * Nj * Sij[index_z_i,index_z_j]
+        Nb = np.multiply(Binned_Abundance, Binned_halo_bias)
+        for i, Nbi in enumerate(Nb.flatten()):
+            for j, Nbj in enumerate(Nb.flatten()):
+                index_z_i, index_z_j = index_Z_flatten.flatten()[i], index_Z_flatten.flatten()[j]
+                cov_SSC[i,j] = Nbi * Nbj * Sij[index_z_i, index_z_j]
+        #partial sky coverage, divide by f_sky
         return cov_SSC/self.f_sky
+    
+     #def sample_covariance_MZ(self, Redshift_bin, Proxy_bin, Binned_Abundance, Binned_halo_bias):
+        #Sij = CL_COUNT_Sij_FLacasa.Sij_FLacasa(Redshift_bin)
+        #LogM, Z = np.meshgrid(np.mean(Proxy_bin, axis = 1), np.mean(Redshift_bin, axis = 1))
+        #index_LogM, index_Z =  np.meshgrid(np.arange(len(Proxy_bin)), np.arange(len(Redshift_bin)))
+        #len_mat = len(Redshift_bin) * len(Proxy_bin)
+        #cov_SSC = np.zeros([len_mat, len_mat])
+        #hb = Binned_halo_bias.flatten()
+        #for i, Ni in enumerate(Binned_Abundance.flatten()):
+        #    index_z_i = index_Z.flatten()[i]
+        #    index_logm_i = index_LogM.flatten()[i]
+        #    logm_mean_i = np.mean([LogM.flatten()[index_logm_i], LogM.flatten()[index_logm_i + 1]])
+        #   z_mean_i = np.mean([Z.flatten()[index_z_i], Z.flatten()[index_z_i + 1]])
+        #    for j, Nj in enumerate(Binned_Abundance.flatten()):
+        #        index_z_j = index_Z.flatten()[j]
+        #        index_logm_j = index_LogM.flatten()[j]
+       #@        logm_mean_j = np.mean([LogM.flatten()[index_logm_j], LogM.flatten()[index_logm_j + 1]])
+       #         z_mean_j = np.mean([Z.flatten()[index_z_j], Z.flatten()[index_z_j + 1]])
+        #        hbi = hb[i]
+        #        hbj = hb[j]
+        #        cov_SSC[i,j] = hbi * hbj * Ni * Nj * Sij[index_z_i,index_z_j]
+        #return cov_SSC/self.f_sky
     
     def multiplicity_function_individual_MZ(self, z = .1, logm = 14, method = 'interp'):
         r"""

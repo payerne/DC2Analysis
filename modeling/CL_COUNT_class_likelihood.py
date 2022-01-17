@@ -2,6 +2,7 @@ import numpy as np
 import numpy as np
 import healpy
 import scipy
+import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.special import erfc
 from scipy.stats import poisson
@@ -19,7 +20,6 @@ class Likelihood():
     """
     def ___init___(self):
         self.name = 'Likelihood for cluster count Cosmology'
-        
         
     def Gaussian(self, x, mu, var_SSC):
         r"""
@@ -88,7 +88,7 @@ class Likelihood():
         inv_covariance_matrix = np.linalg.inv((covariance_matrix))
         self.lnL_Binned_Gaussian = -0.5*np.sum(delta*inv_covariance_matrix.dot(delta)) 
         
-    def lnLikelihood_Binned_MPG_delta(self, N_obs_matrix, N_th_matrix, sample_covariance):
+    def lnLikelihood_Binned_MPG_delta(self, N_th_matrix, N_obs_matrix, sample_covariance):
         r"""
         Attributes:
         -----------
@@ -103,6 +103,8 @@ class Likelihood():
         add attributes with total log-likelihood MPG estimator
         """
         x_th_samples = np.random.multivariate_normal(N_th_matrix.flatten(), sample_covariance, size = 1000)
+        #ensure positive x_th
+        x_th_samples = np.where(x_th_samples >= 0, x_th_samples, 0)
         res = np.log(self.poissonian(N_obs_matrix, x_th_samples))
         self.lnL_Binned_MPG_delta = np.sum(np.mean(res, axis = 0))
         
