@@ -2,7 +2,8 @@ import numpy as np
 from itertools import combinations, chain
 import healpy
 def binning(corner): return [[corner[i],corner[i+1]] for i in range(len(corner)-1)]
-class covariance_matrix():
+
+class Covariance_matrix():
     r"""
     Class for the computation of covariance matrices for cluster abundance:
     a. Bootstrap covariance matrix
@@ -10,8 +11,9 @@ class covariance_matrix():
     c. Sample covariance matrix
     """
     def __init__(self):
-        return 1
-        
+        self.name = 'name'
+        return None
+
     def compute_boostrap_covariance(self, catalog = 1, proxy_colname = 1, 
                                     redshift_colname = 1, proxy_corner = 1, 
                                     z_corner = 1, n_boot = 100, fct_modify = 1):
@@ -101,7 +103,7 @@ class covariance_matrix():
         coeff = (n_jack-N_delete)/(N_delete*n_jack)
         self.Jackknife_covariance_matrix = cov_N * coeff
         
-    def compute_super_sample_covariance(self, proxy_colname = '', redshift_colname = '',
+    def compute_sample_covariance(self, proxy_colname = '', redshift_colname = '',
                                 z_corner = [], proxy_corner = [], catalogs_name=[], 
                                         fct_open = None, fct_modify = None):
         r"""
@@ -135,7 +137,8 @@ class covariance_matrix():
         data = np.array(data_list)
         self.data_all_catalog = data
         N = np.stack((data.astype(float)), axis = 1)
-        mean = np.mean(N, axis = 0)
+        mean = np.mean(N, axis = 1)
         cov_N = np.cov(N, bias = False)
-        self.super_sample_covariance_matrix = cov_N
-        return data, cov_N
+        self.covariance_matrix = cov_N
+        self.mu = mean
+        return cov_N

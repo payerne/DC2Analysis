@@ -87,6 +87,39 @@ class Likelihood():
         delta = (N_obs_matrix - N_th_matrix).flatten()
         inv_covariance_matrix = np.linalg.inv((covariance_matrix))
         self.lnL_Binned_Gaussian = -0.5*np.sum(delta*inv_covariance_matrix.dot(delta)) 
+    
+    def lnLikelihood_Binned_MPG_approx(self, N_th_matrix, N_obs_matrix, sample_covariance):
+        r"""
+        Attributes:
+        -----------
+        N_obs_matrix:
+            observed binned cluster abundance
+        N_th_matrix: array
+            cosmological prediction for binned cluster abundance
+        sample_covarince: array
+            sample covariance matrix for binned cluster abundance
+        Returns:
+        --------
+        add attributes with total log-likelihood MPG approximation
+        """
+        n = len(N_th_matrix.flatten())
+        Kronoecker = np.eye(n)
+        unity = np.zeros(n) + 1
+        N_obs = N_obs_matrix.flatten()
+        mu = N_th_matrix.flatten()
+        N_obs_frac_mu = N_obs/mu
+        frac_mu_x_frac_mu = np.tensordot(1./mu, 1./mu, axes=0)
+        N_obs_x_1 = np.tensordot(N_obs, unity, axes=0)
+        N_obs_frac_mu_x_N_obs_frac_mu = np.tensordot(N_obs_frac_mu, N_obs_frac_mu, axes=0)
+        N_obs_frac_mu_x_1 = np.tensordot(N_obs_frac_mu, unity, axes=0) 
+        M = sample_covariance * ( 1. 
+                                  - 2. * N_obs_frac_mu_x_1
+                                  + N_obs_frac_mu_x_N_obs_frac_mu
+                                  - frac_mu_x_frac_mu * N_obs_x_1 * Kronoecker )
+        Poisson = np.zeros([n])
+        for i, mu_ in enumerate(mu):
+            Poisson[i] = self.poissonian(N_obs[i], mu_)
+        self.lnL_Binned_MPG_approx = np.log( (1. + .5 * np.sum(M)) * np.prod(Poisson) ) 
         
     def lnLikelihood_Binned_MPG_delta(self, N_th_matrix, N_obs_matrix, sample_covariance):
         r"""
