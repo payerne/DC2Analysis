@@ -3,7 +3,7 @@ import pyccl as ccl
 from scipy.integrate import quad
 from scipy.special import jv
 from astropy.cosmology import FlatLambdaCDM
-import mass_conversion as conv
+import CL_WL_mass_conversion as conv
 cosmo_astropy = FlatLambdaCDM(H0=71.0, Om0=0.265, Ob0 = 0.0448)
 """
     We compute the excess surface density profile due to the matter distribution of large scale structure surrounding halo;
@@ -93,27 +93,16 @@ def s_two_halo_term_unbaised(r, cluster_z, cosmo_ccl, kk, Pk):
     ------
     the excess surface density induced by large scale struture, divided by the halo bais
     """
-    
     Da = ccl.angular_diameter_distance(cosmo_ccl, 1, 1./(1. + cluster_z))
-    
     rho_m = ccl.rho_x(cosmo_ccl, 1./(1. + cluster_z), 'matter', is_comoving=False)
-
     def integrand( l , theta ):
-        
         k = l / ( ( 1 + cluster_z ) * Da )
-        
         return l * jv( 0 , l * theta ) * np.interp( k , kk , Pk )
-    
     two_h = []
-    
     for i, R in enumerate(r):
-        
         theta = R/Da
-    
         val = quad(integrand  , 2*1e-4 , 20000 , args = ( theta ))[0]
-        
         two_h.append(val * rho_m / ( 2 * np.pi  * ( 1 + cluster_z )**3 * Da**2 ))
-        
     return np.array(two_h)
 
 
@@ -141,43 +130,26 @@ def halo_bais(logm = 1, concentration = 1, mdef = 'matter', Delta = 200, halo_de
         (Jeremy L. Tinker et al., arXiv:1001.3162v2)
     r"""
     if mdef == 'matter':
-        
         definition = ccl.halos.massdef.MassDef(Delta, mdef, c_m_relation=None)
-
         halobais = ccl.halos.hbias.HaloBiasTinker10(cosmo_ccl, mass_def=definition, mass_def_strict=True)
-
         hbais = halobais.get_halo_bias(cosmo_ccl, 10**logm, 1/(1+cluster_z), mdef_other = definition)
-        
     elif mdef == 'critical':
-        
         if halo_def == 'nfw':
-        
             m200c = 10**logm
-
             m200m, c200m = conv.M200_to_M200_nfw(M200 = m200c, c200 = concentration, 
                                                  cluster_z = cluster_z, 
                                                  initial = 'critical', final = 'mean', 
                                                  cosmo_astropy = cosmo_astropy)
-
             definition = ccl.halos.massdef.MassDef(Delta, 'matter', c_m_relation=None)
-
             halobais = ccl.halos.hbias.HaloBiasTinker10(cosmo_ccl, mass_def=definition, mass_def_strict=True)
-
             hbais = halobais.get_halo_bias(cosmo_ccl, m200m, 1/(1+cluster_z), mdef_other = definition)
-            
-        elif halo_def == 'einasto':
-                
-            m200c = 10**logm
-
-            m200m, c200m = conv.M200_to_M200_einasto(M200 = m200c, c200 = concentration, 
-                                                 cluster_z = cluster_z, 
-                                                 initial = 'critical', final = 'mean', 
-                                                 cosmo_astropy = cosmo_astropy)
-
-            definition = ccl.halos.massdef.MassDef(Delta, 'matter', c_m_relation=None)
-
-            halobais = ccl.halos.hbias.HaloBiasTinker10(cosmo_ccl, mass_def=definition, mass_def_strict=True)
-
-            hbais = halobais.get_halo_bias(cosmo_ccl, m200m, 1/(1+cluster_z), mdef_other = definition)
-        
+        #elif halo_def == 'einasto':
+       #     m200c = 10**logm
+        #    m200m, c200m = conv.M200_to_M200_einasto(M200 = m200c, c200 = concentration, 
+                                                # cluster_z = cluster_z, 
+                                                 #initial = 'critical', final = 'mean', 
+                                                # cosmo_astropy = cosmo_astropy)
+        #    definition = ccl.halos.massdef.MassDef(Delta, 'matter', c_m_relation=None)
+        #    halobais = ccl.halos.hbias.HaloBiasTinker10(cosmo_ccl, mass_def=definition, mass_def_strict=True)
+         #   hbais = halobais.get_halo_bias(cosmo_ccl, m200m, 1/(1+cluster_z), mdef_other = definition)
     return hbais

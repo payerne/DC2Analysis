@@ -1,20 +1,5 @@
-import pyccl as ccl
 from scipy.stats import norm
-import matplotlib.pyplot as plt
 import numpy as np
-import scipy
-from scipy import stats
-from scipy.integrate import quad,simps, dblquad
-from astropy import units as u
-import itertools
-from astropy import constants as const
-from scipy import interpolate
-import emcee
-import iminuit
-from iminuit import Minuit
-from scipy.special import gamma
-import pickle as pkl
-from astropy.cosmology import FlatLambdaCDM
 
 class Richness():
     r"""
@@ -112,7 +97,7 @@ class Richness():
         sigma = self.sigma_loglambda_logm_f(redshift, logm)
         return norm.cdf(lnlambda_bin[1], mu, sigma) - norm.cdf(lnlambda_bin[0], mu, sigma)
 
-    r"""
+    
     def lnLambda_random(self, redshift, logm):
 
         random = np.random.randn(len(logm))
@@ -120,4 +105,4 @@ class Richness():
         mu = self.mu_loglambda_logM_f(redshift, logm)
         sigma = self.sigma_loglambda_logm_f(redshift, logm)
         return mu + sigma * random
-    """
+   

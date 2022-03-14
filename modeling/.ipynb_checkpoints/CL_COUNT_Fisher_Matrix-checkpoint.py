@@ -169,3 +169,38 @@ class Fisher_Matrix():
                     Fisher_matrix_MVP[j,i] = res
         cov_param_MVP = np.linalg.inv(Fisher_matrix_MVP)
         return cov_param_MVP
+    
+    def Fisher_matrix_Binned_MVP_per_z_bin(self, Z_bin, logMass_bin, cosmo, cov_SSC):
+        r"""Fisher matrix for Binned MVP"""
+        cov_SSC_diag = cov_SSC.diagonal()
+        N_th_true_cosmo = self.model_Binned_Nth(Z_bin, logMass_bin, cosmo)
+        MVP = mvp.MVP(N_th_true_cosmo.flatten(), cov_SSC_diag)
+        MVP._set_axis(5, N_th_true_cosmo.flatten(), cov_SSC_diag)
+        def ln_P_mvp_grid(theta):
+            r"""compute log(P) for each predicted cluster abundance"""
+            Omega_m_new, sigma8_new = theta
+            cosmo_new = self.change_cosmo(Omega_m_new, sigma8_new)
+            self.set_cosmo_definitions(cosmo_new)
+            N_th = self.model_Binned_Nth(Z_bin, logMass_bin, cosmo_new).flatten()
+            N, P = MVP.p_mvp(N_th, cov_SSC_diag)
+            P_grid = np.zeros([len(N_th_true_cosmo.flatten()), MVP.n_max])
+            for i, n_th in enumerate(N_th):
+                P_grid[i,:][N[i]] = P[i]/np.sum(P[i])
+            return np.log(P_grid)
+        #compute ln_P
+        ln_P = ln_P_mvp_grid(self.True_value_0m_s8)
+        #compute first derivative
+        first_derivative_ln_P = self.forecast.first_derivative(self.True_value_0m_s8, ln_P_mvp_grid, ln_P.shape, delta = 1e-5)
+        Fisher_matrix_MVP = np.zeros([2,2])
+        for i in range(2):
+            for j in range(2):
+                if i >= j:
+                    res = 0
+                    for k in range(len(Z_bin)*len(logMass_bin)):
+                        mask_finite = np.isfinite(first_derivative_ln_P[i][k])*np.isfinite(first_derivative_ln_P[j][k])
+                        p = np.exp(ln_P[k][mask_finite])/np.sum(np.exp(ln_P[k][mask_finite]))
+                        res = res + np.sum(p * first_derivative_ln_P[i][k][mask_finite]*first_derivative_ln_P[j][k][mask_finite])
+                    Fisher_matrix_MVP[i,j] = res
+                    Fisher_matrix_MVP[j,i] = res
+        cov_param_MVP = np.linalg.inv(Fisher_matrix_MVP)
+        return cov_param_MVP

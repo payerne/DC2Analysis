@@ -6,7 +6,6 @@ from scipy import stats
 from scipy.integrate import quad,simps, dblquad
 from scipy import interpolate
 import sys
-import CL_COUNT_Sij_FLacasa
 
 class ClusterAbundance():
     r"""
@@ -114,8 +113,9 @@ class ClusterAbundance():
             interpolated function over the tabulated multiplicity grid
         """
         grid = np.zeros([len(self.logm_grid), len(self.z_grid)])
+        self.halo_bias_model = halobiais
         for i, z in enumerate(self.z_grid):
-            hb = halobiais.get_halo_bias(self.cosmo, 10**self.logm_grid, 1./(1. + z), mdef_other = self.massdef)
+            hb = self.halo_bias_model.get_halo_bias(self.cosmo, 10**self.logm_grid, 1./(1. + z), mdef_other = self.massdef)
             grid[:,i] = hb
         self.halo_biais = grid
         self.halo_biais_interpolation = interpolate.interp2d(self.z_grid, 
@@ -123,7 +123,7 @@ class ClusterAbundance():
                                                                 self.halo_biais, 
                                                                 kind='cubic')
         
-    def halo_bias_MZ(self, Redshift_bin = [], Proxy_bin = [], N_th = []): 
+    def halo_bias_MZ(self, Redshift_bin = [], Proxy_bin = [], N_th = [], method = 'simps'): 
         r"""
         returns the predicted number count in mass-redshift bins
         Attributes:
@@ -135,28 +135,45 @@ class ClusterAbundance():
         method : str
             method to be used for the cluster abundance prediction
             "simps": use simpson integral of the tabulated multiplicity
+            "exact_CCL": use scipy.dblquad to integer CCL multiplicity function
         Returns:
         --------
         N_th_matrix: ndarray
             matrix for the cluster abundance prediction in redshift and mass bins
         """
-        halo_biais_matrix = np.zeros([len(Redshift_bin), len(Proxy_bin)])                    
-        index_proxy = np.arange(len(self.logm_grid))
-        index_z = np.arange(len(self.z_grid))
-        for i, proxy_bin in enumerate(Proxy_bin):
-            mask_proxy = (self.logm_grid >= proxy_bin[0])*(self.logm_grid <= proxy_bin[1])
-            proxy_cut = self.logm_grid[mask_proxy]
-            index_proxy_cut = index_proxy[mask_proxy]
-            proxy_cut[0], proxy_cut[-1] = proxy_bin[0], proxy_bin[1]
-            for j, z_bin in enumerate(Redshift_bin):
-                z_down, z_up = z_bin[0], z_bin[1]
-                mask_z = (self.z_grid >= z_bin[0])*(self.z_grid <= z_bin[1])
-                z_cut = self.z_grid[mask_z]
-                index_z_cut = index_z[mask_z]
-                z_cut[0], z_cut[-1] = z_down, z_up
-                integrand = self.sky_area * np.array([self.dN_dzdlogMdOmega[:,k][mask_proxy] * self.halo_biais[:,k][mask_proxy] for k in index_z_cut])
-                halo_biais_matrix[j,i] = simps(simps(integrand, proxy_cut), z_cut)/N_th[j,i]
-        return halo_biais_matrix
+        halo_biais_matrix = np.zeros([len(Redshift_bin), len(Proxy_bin)]) 
+        if method == 'simps':               
+            index_proxy = np.arange(len(self.logm_grid))
+            index_z = np.arange(len(self.z_grid))
+            for i, proxy_bin in enumerate(Proxy_bin):
+                mask_proxy = (self.logm_grid >= proxy_bin[0])*(self.logm_grid <= proxy_bin[1])
+                proxy_cut = self.logm_grid[mask_proxy]
+                index_proxy_cut = index_proxy[mask_proxy]
+                proxy_cut[0], proxy_cut[-1] = proxy_bin[0], proxy_bin[1]
+                for j, z_bin in enumerate(Redshift_bin):
+                    z_down, z_up = z_bin[0], z_bin[1]
+                    mask_z = (self.z_grid >= z_bin[0])*(self.z_grid <= z_bin[1])
+                    z_cut = self.z_grid[mask_z]
+                    index_z_cut = index_z[mask_z]
+                    z_cut[0], z_cut[-1] = z_down, z_up
+                    integrand = self.sky_area * np.array([self.dN_dzdlogMdOmega[:,k][mask_proxy] * self.halo_biais[:,k][mask_proxy] for k in index_z_cut])
+                    halo_biais_matrix[j,i] = simps(simps(integrand, proxy_cut), z_cut)/N_th[j,i]
+            return halo_biais_matrix
+        
+        if method == 'exact_CCL':
+            def __integrand__(logm, z):
+                a = self.sky_area * self.dVdzdOmega(z) * self.dndlog10M(logm, z)  
+                b = self.halo_bias_model.get_halo_bias(self.cosmo, 10**logm, 1./(1. + z), mdef_other = self.massdef)
+                return a*b
+            for i, proxy_bin in enumerate(Proxy_bin):
+                for j, z_bin in enumerate(Redshift_bin):
+                    halo_biais_matrix[j,i] = scipy.integrate.dblquad(__integrand__, 
+                                                               z_bin[0], z_bin[1], 
+                                                               lambda x: proxy_bin[0], 
+                                                               lambda x: proxy_bin[1])[0]/N_th[j,i]
+            return halo_biais_matrix
+            
+            
         
     def Cluster_Abundance_MZ(self, Redshift_bin = [], Proxy_bin = [], method = 'dblquad_interp'): 
         r"""
@@ -216,7 +233,7 @@ class ClusterAbundance():
 
         return N_th_matrix
     
-    def sample_covariance_MZ(self, Redshift_bin, Proxy_bin, Binned_Abundance, Binned_halo_bias):
+    def sample_covariance_MZ(self, Redshift_bin, Proxy_bin, Binned_Abundance, Binned_halo_bias, Sij):
         r"""
         returns the sample covariance matrix for cluster count
         Attributes:
@@ -229,14 +246,14 @@ class ClusterAbundance():
             predicted abundance
         Binned_halo_bias: array
             predicted binned halo bias
+            Sij: array
+        matter fluctuation amplitude per redshift bin
         Returns:
         --------
         sample_covariance: array
             sample covariance for cluster abundance
             #uses the calculation of the fluctuation apmplitude Sij from F. Lacasa https://github.com/fabienlacasa/PySSC
         """
-        #use FLacasa code
-        Sij = CL_COUNT_Sij_FLacasa.Sij_FLacasa(Redshift_bin)
         index_LogM, index_Z =  np.meshgrid(np.arange(len(Proxy_bin)), np.arange(len(Redshift_bin)))
         index_Z_flatten = index_Z.flatten()
         len_mat = len(Redshift_bin) * len(Proxy_bin)
@@ -248,28 +265,6 @@ class ClusterAbundance():
                 cov_SSC[i,j] = Nbi * Nbj * Sij[index_z_i, index_z_j]
         #partial sky coverage, divide by f_sky
         return cov_SSC/self.f_sky
-    
-     #def sample_covariance_MZ(self, Redshift_bin, Proxy_bin, Binned_Abundance, Binned_halo_bias):
-        #Sij = CL_COUNT_Sij_FLacasa.Sij_FLacasa(Redshift_bin)
-        #LogM, Z = np.meshgrid(np.mean(Proxy_bin, axis = 1), np.mean(Redshift_bin, axis = 1))
-        #index_LogM, index_Z =  np.meshgrid(np.arange(len(Proxy_bin)), np.arange(len(Redshift_bin)))
-        #len_mat = len(Redshift_bin) * len(Proxy_bin)
-        #cov_SSC = np.zeros([len_mat, len_mat])
-        #hb = Binned_halo_bias.flatten()
-        #for i, Ni in enumerate(Binned_Abundance.flatten()):
-        #    index_z_i = index_Z.flatten()[i]
-        #    index_logm_i = index_LogM.flatten()[i]
-        #    logm_mean_i = np.mean([LogM.flatten()[index_logm_i], LogM.flatten()[index_logm_i + 1]])
-        #   z_mean_i = np.mean([Z.flatten()[index_z_i], Z.flatten()[index_z_i + 1]])
-        #    for j, Nj in enumerate(Binned_Abundance.flatten()):
-        #        index_z_j = index_Z.flatten()[j]
-        #        index_logm_j = index_LogM.flatten()[j]
-       #@        logm_mean_j = np.mean([LogM.flatten()[index_logm_j], LogM.flatten()[index_logm_j + 1]])
-       #         z_mean_j = np.mean([Z.flatten()[index_z_j], Z.flatten()[index_z_j + 1]])
-        #        hbi = hb[i]
-        #        hbj = hb[j]
-        #        cov_SSC[i,j] = hbi * hbj * Ni * Nj * Sij[index_z_i,index_z_j]
-        #return cov_SSC/self.f_sky
     
     def multiplicity_function_individual_MZ(self, z = .1, logm = 14, method = 'interp'):
         r"""

@@ -21,39 +21,6 @@ class Likelihood():
     def ___init___(self):
         self.name = 'Likelihood for cluster count Cosmology'
         
-    def Gaussian(self, x, mu, var_SSC):
-        r"""
-        Attributes:
-        -----------
-        x: array
-            variable along the x axis
-        mu: float
-            mean of the Gaussian distribution
-        var_SSC: float
-            variance of the Gaussian distrubution
-        Returns:
-        --------
-        g: array
-            Gausian probability density function
-        """
-        return np.exp(-.5*(x-mu)**2/var_SSC)/np.sqrt(2*np.pi*var_SSC)
-        
-    def poissonian(self, n, mu):
-        r"""
-        Attributes:
-        -----------
-        n: array
-            variable along the n axis
-        mu: float
-            mean of the Poisson distribution
-        Returns:
-        --------
-        p: array
-            Poisson probability function
-        """
-        rv = poisson(mu)
-        return rv.pmf(n)
-        
     def lnLikelihood_Binned_Poissonian(self, N_th_matrix, N_obs_matrix):
         r"""
         returns the value of the log-likelihood for Poissonian binned approach
@@ -87,6 +54,68 @@ class Likelihood():
         delta = (N_obs_matrix - N_th_matrix).flatten()
         inv_covariance_matrix = np.linalg.inv((covariance_matrix))
         self.lnL_Binned_Gaussian = -0.5*np.sum(delta*inv_covariance_matrix.dot(delta)) 
+        
+    def lnLikelihood_Binned_MPG_Block_Diagonal(self, N_th_matrix, N_obs_matrix, Halo_bias, S_ii, method = 'simps'):
+        
+        n_z_bin, n_m_bin = N_th_matrix.shape
+        n = 10
+        def _integrand_(dx, n_th, n_obs, hbias, S_ii): 
+            rv = poisson(n_th*(1 + hbias*dx))
+            return np.prod(rv.pmf(n_obs)) * multivariate_normal.pdf(dx, mean=0, cov=S_ii)
+        mvp = np.zeros(n_z_bin)
+        for i in range(n_z_bin):
+            n_obs, n_th = N_obs_matrix[i,:], N_th_matrix[i,:]
+            hbias = Halo_bias[i,:]
+            if method == 'exact': 
+                min_border = max(-n*np.sqrt(S_ii[i]), max(-1/hbias))
+                max_border = (n+1)*np.sqrt(S_ii[i])
+                res, err = quad(_integrand_, min_border, max_border,
+                               epsabs=1.49e-08, epsrel=1.49e-08,
+                               args = (n_th, n_obs, hbias, S_ii[i])) 
+                mvp[i] = res
+        self.lnL_Binned_MPG_Block_Diagonal = np.sum(np.log(mvp))
+    
+    def lnLikelihood_UnBinned_Poissonian(self, Omega, dN_dzdlogMdOmega, N_tot):
+        r"""
+        Attributes:
+        -----------
+       dN_dzdlogMdOmega: array
+            cosmological prediction for multiplicu-ity function
+        N_tot: float
+            cosmological prediction for total number of cluster
+        Returns:
+        --------
+        add attributes with total log-likelihood for Poissonian unbinned approach
+        """
+        self.lnL_UnBinned_Poissonian = np.sum(np.log(Omega * dN_dzdlogMdOmega)) - N_tot
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     def lnLikelihood_Binned_MPG_approx(self, N_th_matrix, N_obs_matrix, sample_covariance):
         r"""
@@ -197,17 +226,3 @@ class Likelihood():
             _integrand_[i,:] = alpha * p
         res = simps(_integrand_, u_array)
         self.lnL_Binned_MPG_diagonal = np.sum(np.log(res))
-        
-    def lnLikelihood_UnBinned_Poissonian(self, dN_dzdlogMdOmega, N_tot):
-        r"""
-        Attributes:
-        -----------
-       dN_dzdlogMdOmega: array
-            cosmological prediction for multiplicu-ity function
-        N_tot: float
-            cosmological prediction for total number of cluster
-        Returns:
-        --------
-        add attributes with total log-likelihood for Poissonian unbinned approach
-        """
-        self.lnL_UnBinned_Poissonian = np.sum(np.log(dN_dzdlogMdOmega)) - N_tot

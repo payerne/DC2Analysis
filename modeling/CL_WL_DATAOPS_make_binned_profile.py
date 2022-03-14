@@ -1,23 +1,10 @@
 import sys
 import os
-os.environ['CLMM_MODELING_BACKEND'] = 'nc' # here you may choose ccl or nc (NumCosmo)
-sys.path.append('/pbs/throng/lsst/users/cpayerne/CLMM/examples/support')
-try: import clmm
-except:
-    import notebook_install
-    notebook_install.install_clmm_pipeline(upgrade=False)
-    import clmm
-
 import numpy as np
 from astropy.table import Table
 import fnmatch
 import pickle 
-
-import clmm.polaraveraging as pa
-import clmm.galaxycluster as gc
-import clmm.modeling as modeling
 import random
-
 import glob
 from scipy import interpolate
 
