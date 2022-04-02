@@ -15,24 +15,18 @@ def split_list(alist, wanted_parts=1):
     return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts] for i in range(wanted_parts) ]
 
 def mean_value(profile = None, r_in = 'r',gt_in = 'gt', gx_in = 'gx',r_out = 'r',
-               gt_out = 'gt',gx_out = 'gx',weight = 'W_l',):
-
+               gt_out = 'gt',gx_out = 'gx',weight = 'W_l'):
+    
     n_bins = len(profile[r_in][0])
     gt_w, gx_w, r_w, w = np.zeros(n_bins), np.zeros(n_bins), np.zeros(n_bins), np.zeros(n_bins)
     gt_w = np.average(profile[gt_in], weights = profile[weight], axis = 0)
     gx_w = np.average(profile[gx_in], weights = profile[weight], axis = 0)
     r_w = np.average(profile[r_in], weights = None, axis = 0)
-    #for p in profile:
-    #    prob = p[weight]
-     #   if weight == None: prob = np.array([1 if pw > 0 else 0 for pw in probc])
-     #   gt_w = gt_w + p[gt_in]*prob
-     #   gx_w = gx_w + p[gx_in]*prob
-     #   r_w = r_w + p[r_in]*prob
-     #   w = w + prob
-    #return gt_w/w, gx_w/w, r_w/w
+
     return gt_w, gx_w, r_w
         
 def stacked_profile(profile = None,r_in = '1',gt_in = '1', gx_in = '1',
+                    rmin = 1, rmax = 10,
                     r_out = '1',gt_out = '1', gx_out = '1',
                     weight = '1',
                     z_name = '1', z_err = '1',

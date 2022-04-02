@@ -1,5 +1,6 @@
 import scipy
 import numpy as np
+from tqdm.auto import tqdm, trange
 from astropy.table import Table
 import multiprocessing
 
@@ -43,7 +44,7 @@ def compute_position_from_distribution(ndim = 2, pdf = None, pdf_max = 1, N_poin
     print(f"acceptance = {acceptance}")
     return random_samples, pdf_val
     
-def compute_model(pos, model = None, multiprocessing = False): 
+def compute_model(pos, model = None): 
     """
     Attributes:
     ===========
@@ -59,15 +60,10 @@ def compute_model(pos, model = None, multiprocessing = False):
     pos_array = np.array(pos).T
     m0 = model(pos_array[0])
     model_tab = np.zeros((pos_array.shape[0],) + m0.shape)
-    if multiprocessing == False:
-        #loop over individual values
-        for index, pos in zip(np.arange(len(pos_array)), pos_array):
-            model_tab[index,:] = model(pos)
-        return np.array(model_tab)
-    if multiprocessing == True:
-        #use Python multiprocessing
-        def fct_n(n): return model(pos_array[n])
-        return multiprocessing_Python(pos_array, fct_n)
+    #loop over individual values
+    for index, pos in zip(np.arange(len(pos_array)), pos_array):
+        model_tab[index,:] = model(pos)
+    return np.array(model_tab)
     
 def compute_posterior(posterior = None, model_tab = None, data = None): 
     """
@@ -89,10 +85,27 @@ def compute_posterior(posterior = None, model_tab = None, data = None):
         posterior_tab.append(posterior(model, data))
     return np.array(posterior_tab)
 
-def multiprocessing_Python(pos, fct_n):
+def _map_f(args):
+    f, i = args
+    return f(i)
 
+def map(func, iter, ordered=True):
     ncpu = multiprocessing.cpu_count()
     print('You have {0:1d} CPUs'.format(ncpu))
-    pool = multiprocessing.Pool(processes=2) 
-    n = len(pos)
-    return np.array(pool.map(fct_n, np.arange(n)))
+    pool = multiprocessing.Pool(processes=ncpu) 
+    inputs = ((func,i) for i in iter) #use a generator, so that nothing is computed before it's needed :)
+    try : n = len(iter)
+    except TypeError : n = None
+    res_list = []
+    if ordered: pool_map = pool.imap
+    else: pool_map = pool.imap_unordered
+    with tqdm(total=n, desc='# progress ...') as pbar:
+        for res in pool_map(_map_f, inputs):
+            try :
+                pbar.update()
+                res_list.append(res)
+            except KeyboardInterrupt:
+                pool.terminate()
+    pool.close()
+    pool.join()
+    return res_list
